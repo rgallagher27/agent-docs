@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Features — agent-docs</title>
 <style>
-  :root { --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6; --muted: #9aa5b1; --accent-2: #60a5fa; --border: #2d3744; --code-bg: #0a0e13; }
+  :root { --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6; --muted: #9aa5b1; --accent-2: #60a5fa; --good: #10b981; --warn: #f59e0b; --border: #2d3744; --code-bg: #0a0e13; }
   * { box-sizing: border-box; }
   body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
   .wrap { max-width: 980px; margin: 0 auto; padding: 24px 32px 96px; }
@@ -13,13 +13,19 @@
   .breadcrumbs .sep { color: var(--border); margin: 0 8px; }
   header.doc-head { padding: 24px 0 28px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
   h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.02em; }
+  h3 { margin: 0 0 6px; font-size: 16px; color: var(--accent-2); }
   .meta { color: var(--muted); font-size: 13px; }
   .lead { color: #cfd6df; font-size: 16px; margin: 0; }
   .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin-left: 6px; }
+  .badge-good { background: rgba(16,185,129,0.15); color: var(--good); }
+  .badge-warn { background: rgba(245,158,11,0.18); color: var(--warn); }
   code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #f0d090; }
-  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 16px 0; }
-  .empty { text-align: center; color: var(--muted); padding: 40px 20px; }
   a { color: var(--accent-2); }
+  a.card-link { display: block; color: inherit; text-decoration: none; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+  a.card-link:hover .card { border-color: var(--accent-2); background: var(--panel-2); }
+  .card p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
   footer.doc-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
   footer.doc-foot a { color: var(--accent-2); text-decoration: none; }
 </style>
@@ -37,17 +43,17 @@
   <h1>Features</h1>
   <div class="meta" style="margin-bottom: 14px;">
     <span class="tag">section-index</span>
-    <span class="tag">empty</span>
+    <span class="tag">1 built</span>
   </div>
   <p class="lead">Per-feature docs written after a feature ships: what it is, key files, edge cases. Named <code>{feature-name}.html</code>.</p>
 </header>
 
-<div class="panel">
-  <div class="empty">
-    <p style="font-size: 16px; margin-bottom: 6px;">No features yet.</p>
-    <p style="margin: 0;">Nothing has shipped — pre-code phase.</p>
+<a class="card-link" href="claude-code-integration.html">
+  <div class="card">
+    <h3>Claude Code integration <span class="badge badge-good">Built</span><span class="badge badge-warn">Dogfood pending</span></h3>
+    <p>How to wire <code>agent-docs mcp</code> into Claude Code so the LLM can manage your docs through <code>write_doc</code>, <code>read_doc</code>, and <code>list_docs</code>. Covers config, both wiring options (CLI + JSON), the end-to-end loop, and troubleshooting.</p>
   </div>
-</div>
+</a>
 
 <footer class="doc-foot">
   <div>Native doc — no markdown source.</div>

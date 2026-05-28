@@ -74,8 +74,8 @@
 </header>
 
 <div>
-  <div class="stat"><strong>7 / 9</strong> steps complete</div>
-  <div class="stat"><strong>MCP landed</strong> phase</div>
+  <div class="stat"><strong>8 / 9</strong> steps complete</div>
+  <div class="stat"><strong>Wiring documented</strong> phase</div>
   <div class="stat"><strong>ADRs 001-003</strong> locked</div>
   <div class="stat"><strong>Single user</strong> mode for MVP</div>
 </div>
@@ -129,7 +129,7 @@ go.mod, go.sum</code></pre>
 
 <h2>Tracker</h2>
 
-<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 7 of 9 steps complete. Last updated 2026-05-28.</p>
+<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 8 of 9 steps complete. Last updated 2026-05-28.</p>
 
 <table>
   <thead>
@@ -180,9 +180,9 @@ go.mod, go.sum</code></pre>
     </tr>
     <tr>
       <td>7</td>
-      <td><strong>Claude Code wiring</strong> — produce a snippet for the Claude Code MCP config plus a README section showing the end-to-end loop.</td>
-      <td><span class="badge badge-muted">Not started</span></td>
-      <td>—</td>
+      <td><strong>Claude Code wiring</strong> — MCP config snippet, feature doc, end-to-end loop documented.</td>
+      <td><span class="badge badge-good">Done</span></td>
+      <td>Feature doc at <a href="../features/claude-code-integration.html">features/claude-code-integration.html</a>. Covers config setup, both wiring options (<code>claude mcp add</code> CLI and manual <code>~/.claude.json</code>), tool reference table, end-to-end loop transcript, and troubleshooting. The dogfood-with-real-Claude-Code verification is gated on the user wiring their session and restarting — see Step 8 for that.</td>
     </tr>
     <tr>
       <td>8</td>
@@ -377,11 +377,23 @@ go.mod, go.sum</code></pre>
       <td>Step 6</td>
       <td>Tool descriptions are explicit about conventions (<code>plans/YYYY-MM-DD-{slug}.html</code>, <code>decisions/NNN-{name}.html</code>) and point at <code>STYLE_AND_TEMPLATE.md</code>. The LLM has no other signal for "how do I shape this doc"; the schema descriptions ARE the spec it sees.</td>
     </tr>
+    <tr>
+      <td>Step 7</td>
+      <td>Wiring is documented in <a href="../features/claude-code-integration.html">a feature doc</a>, not a top-level README. Reasons: the dogfood convention is HTML-canonical (per ADR-002) — adding a README.md would split documentation across two formats. The feature doc covers everything a README would (install / config / end-to-end loop / troubleshooting). A minimal repo-root README pointing at the docs is fine to add later if GitHub discoverability becomes a constraint.</td>
+    </tr>
+    <tr>
+      <td>Step 7</td>
+      <td>Two config-wiring paths documented: <code>claude mcp add</code> (CLI, recommended) and manual JSON in <code>~/.claude.json</code> / <code>.mcp.json</code>. Cover the same ground but the CLI is less error-prone.</td>
+    </tr>
+    <tr>
+      <td>Step 7</td>
+      <td>Other-harnesses section is intentionally vague — agent-docs speaks plain MCP-over-stdio, so anything MCP-compatible works. Concrete wiring instructions per harness (Codex, OpenCode, Cursor, Zed, Continue) get added as we (or contributors) actually verify them, not speculatively.</td>
+    </tr>
   </tbody>
 </table>
 
 <div class="panel-note">
-  <strong>Next concrete action:</strong> step 7 — Claude Code wiring. Write the MCP config snippet (<code>~/.config/claude-code/mcp.json</code> or the equivalent project-local config), document the loop in a feature doc under <code>docs-html/features/</code>, and verify end-to-end by adding agent-docs as an MCP server in this very Claude Code session — the LLM writing docs about itself, via itself.
+  <strong>Next concrete action:</strong> step 8 — end-to-end dogfood validation. Requires you to wire <code>agent-docs mcp</code> into Claude Code per the <a href="../features/claude-code-integration.html">feature doc</a> and restart. In the resulting session, the LLM should be able to <code>list_docs</code>, <code>read_doc</code>, and <code>write_doc</code> against this very repo. The validation passes when a doc written via <code>write_doc</code> on a feature branch lands in git, is browsable via <code>agent-docs serve</code>, and a merge to <code>main</code> makes it visible at the trunk-alias URL. Result gets recorded as <code>reviews/2026-05-29-mvp-validation.html</code>.
 </div>
 
 <footer class="doc-foot">
