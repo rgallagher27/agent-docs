@@ -70,10 +70,10 @@
 </header>
 
 <div>
-  <div class="stat"><strong>4</strong> Go source files</div>
+  <div class="stat"><strong>6</strong> Go source files</div>
   <div class="stat"><strong>3</strong> ADRs accepted</div>
-  <div class="stat"><strong>1</strong> plan in progress (3/9)</div>
-  <div class="stat"><strong>Config landed</strong> phase</div>
+  <div class="stat"><strong>1</strong> plan in progress (4/9)</div>
+  <div class="stat"><strong>Gitstore landed</strong> phase</div>
 </div>
 
 <h2>Start here</h2>
@@ -117,8 +117,8 @@
   <a href="decisions/001-repo-canonical-source-of-truth.html">001 (repo-canonical)</a>,
   <a href="decisions/002-html-canonical-no-source-language.html">002 (HTML-canonical, no source language)</a>,
   and <a href="decisions/003-branch-aware-urls-with-preview-lifecycle.html">003 (branch-aware URLs with preview lifecycle)</a>.
-  The <a href="plans/2026-05-28-walking-skeleton-mvp.html">walking-skeleton MVP plan</a> is in progress (3 / 9): Go module scaffold, CLI router, and TOML config loader landed. <code>./agent-docs serve --config foo.toml</code> loads, validates, and reports its planned bind + project count before the not-implemented stub fires. <code>go vet</code> / <code>go test</code> clean across both packages.
-  <strong>Next concrete action:</strong> tracker step 3 — <code>internal/gitstore</code> on top of <code>go-git</code>. Bare-clone wrapper with init, fetch, list-refs, read-blob, commit, push.
+  The <a href="plans/2026-05-28-walking-skeleton-mvp.html">walking-skeleton MVP plan</a> is in progress (4 / 9): Go module scaffold, CLI router, TOML config loader, and <code>internal/gitstore</code> landed. <code>./agent-docs fetch</code> now actually fetches — clones bare on first run, mirror-fetches on subsequent runs. <code>go test ./...</code> clean across all three packages (~22 cases). Smoke-tested against this repo as its own remote.
+  <strong>Next concrete action:</strong> tracker step 4 — HTTP server on stdlib <code>net/http</code>, routing <code>/p/{proj}/{ref}/{path…}</code> through gitstore.
 </div>
 
 <p style="margin-top: 16px;">See <a href="architecture.html#open-questions">Architecture › Open questions</a> for the live list.</p>

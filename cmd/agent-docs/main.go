@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/rgallagher/agent-docs/internal/config"
+	"github.com/rgallagher/agent-docs/internal/gitstore"
 )
 
 // version is the build-time version string. Set via -ldflags "-X main.version=…" at release time.
@@ -101,23 +103,38 @@ func cmdFetch(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	target := *project
-	if target == "" {
-		target = fmt.Sprintf("<all %d projects>", len(cfg.Projects))
-	} else if !hasProject(cfg, target) {
-		return fmt.Errorf("fetch: project %q not found in %s", target, *cfgPath)
+	targets, err := selectProjects(cfg, *project)
+	if err != nil {
+		return err
 	}
-	fmt.Fprintf(stdout, "would fetch %s from %s\n", target, *cfgPath)
-	return fmt.Errorf("fetch: %w (tracker step 3)", errNotImplemented)
+
+	ctx := context.Background()
+	for _, p := range targets {
+		store, err := gitstore.Open(p.Remote, p.ClonePath)
+		if err != nil {
+			return fmt.Errorf("fetch %s: %w", p.Slug, err)
+		}
+		if err := store.Fetch(ctx); err != nil {
+			return fmt.Errorf("fetch %s: %w", p.Slug, err)
+		}
+		fmt.Fprintf(stdout, "fetched %s\n", p.Slug)
+	}
+	return nil
 }
 
-func hasProject(c *config.Config, slug string) bool {
-	for _, p := range c.Projects {
+// selectProjects returns the subset of cfg.Projects matching slug, or
+// all projects if slug is empty. Returns an error if slug is non-empty
+// and no matching project is configured.
+func selectProjects(cfg *config.Config, slug string) ([]config.Project, error) {
+	if slug == "" {
+		return cfg.Projects, nil
+	}
+	for _, p := range cfg.Projects {
 		if p.Slug == slug {
-			return true
+			return []config.Project{p}, nil
 		}
 	}
-	return false
+	return nil, fmt.Errorf("project %q not found in config", slug)
 }
 
 func defaultConfigPath() string {

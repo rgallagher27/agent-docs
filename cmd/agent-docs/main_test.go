@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -92,16 +94,23 @@ func TestFetchUnknownProject(t *testing.T) {
 	}
 }
 
-func TestFetchAllProjects(t *testing.T) {
-	cfgPath := writeTempConfig(t, validConfig)
+func TestFetchAllProjects_RealRemote(t *testing.T) {
+	remote := makeBareRemoteForTest(t)
+	clonePath := filepath.Join(t.TempDir(), "clone.git")
+	cfg := fmt.Sprintf(`
+[[project]]
+slug = "fixture"
+remote = %q
+clone_path = %q
+`, remote, clonePath)
+	cfgPath := writeTempConfig(t, cfg)
 
 	var stdout, stderr bytes.Buffer
-	err := run([]string{"fetch", "--config", cfgPath}, &stdout, &stderr)
-	if err == nil || !strings.Contains(err.Error(), "not implemented") {
-		t.Fatalf("err = %v, want 'not implemented'", err)
+	if err := run([]string{"fetch", "--config", cfgPath}, &stdout, &stderr); err != nil {
+		t.Fatalf("fetch: %v\nstderr=%s", err, stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "<all 1 projects>") {
-		t.Errorf("stdout = %q, missing all-projects preview", stdout.String())
+	if !strings.Contains(stdout.String(), "fetched fixture") {
+		t.Errorf("stdout = %q, missing 'fetched fixture'", stdout.String())
 	}
 }
 
@@ -111,6 +120,45 @@ slug = "test"
 remote = "/tmp/test.git"
 clone_path = "/tmp/clones/test"
 `
+
+// makeBareRemoteForTest creates a bare git repo with one commit on main
+// and returns its path. Mirrors the helper in internal/gitstore/gitstore_test.go;
+// the small duplication keeps the cmd tests self-contained.
+func makeBareRemoteForTest(t *testing.T) string {
+	t.Helper()
+	remoteDir := filepath.Join(t.TempDir(), "remote.git")
+	workDir := filepath.Join(t.TempDir(), "work")
+
+	run := func(dir, name string, args ...string) {
+		t.Helper()
+		cmd := exec.Command(name, args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("%s %v: %v\n%s", name, args, err, out)
+		}
+	}
+
+	if err := os.MkdirAll(remoteDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run("", "git", "init", "--bare", "--initial-branch=main", remoteDir)
+
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run(workDir, "git", "init", "--initial-branch=main")
+	run(workDir, "git", "remote", "add", "origin", remoteDir)
+	if err := os.WriteFile(filepath.Join(workDir, "README.md"), []byte("# test\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(workDir, "git", "add", "README.md")
+	run(workDir, "git",
+		"-c", "user.name=Tester",
+		"-c", "user.email=t@t",
+		"commit", "-m", "initial")
+	run(workDir, "git", "push", "origin", "main")
+	return remoteDir
+}
 
 func writeTempConfig(t *testing.T, contents string) string {
 	t.Helper()

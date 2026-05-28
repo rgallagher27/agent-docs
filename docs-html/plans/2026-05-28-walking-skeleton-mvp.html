@@ -74,8 +74,8 @@
 </header>
 
 <div>
-  <div class="stat"><strong>3 / 9</strong> steps complete</div>
-  <div class="stat"><strong>Config landed</strong> phase</div>
+  <div class="stat"><strong>4 / 9</strong> steps complete</div>
+  <div class="stat"><strong>Gitstore landed</strong> phase</div>
   <div class="stat"><strong>ADRs 001-003</strong> locked</div>
   <div class="stat"><strong>Single user</strong> mode for MVP</div>
 </div>
@@ -129,7 +129,7 @@ go.mod, go.sum</code></pre>
 
 <h2>Tracker</h2>
 
-<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 3 of 9 steps complete. Last updated 2026-05-28.</p>
+<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 4 of 9 steps complete. Last updated 2026-05-28.</p>
 
 <table>
   <thead>
@@ -156,9 +156,9 @@ go.mod, go.sum</code></pre>
     </tr>
     <tr>
       <td>3</td>
-      <td><strong>Gitstore</strong> — wrap <code>go-git</code>. Functions: <code>Init(remote, path)</code>, <code>Fetch()</code>, <code>ListRefs()</code>, <code>ReadBlob(ref, path)</code>, <code>Commit(ref, path, content, msg, author)</code>, <code>Push(ref)</code>. Table-driven tests against a local <code>git init --bare</code>.</td>
-      <td><span class="badge badge-muted">Not started</span></td>
-      <td>Bare clones only — no working trees. In-memory tree manipulation for writes.</td>
+      <td><strong>Gitstore</strong> — wrap <code>go-git</code>. <code>Open</code>, <code>Fetch</code>, <code>ListRefs</code>, <code>ReadBlob</code>, <code>ListDir</code>, <code>Commit</code> (single op: write blob + build trees + commit + update ref + push).</td>
+      <td><span class="badge badge-good">Done</span></td>
+      <td><code>internal/gitstore</code> package. Bare clones only — no working trees. In-memory tree manipulation for writes: <code>buildTree</code> recursively rebuilds parent dirs, writes blob + intermediate trees + commit to the object store, updates the local ref, pushes to origin. Mirror-semantic fetch (<code>+refs/heads/*:refs/heads/*</code>) so the bare clone tracks remote heads directly. 12 tests including remote-push round-trip and fetch-picks-up-new-commit. <code>cmdFetch</code> now does real work; smoke test against the dogfooding repo clones, re-fetches as no-op.</td>
     </tr>
     <tr>
       <td>4</td>
@@ -281,11 +281,35 @@ go.mod, go.sum</code></pre>
       <td>Step 2</td>
       <td>Default bind is <code>127.0.0.1:8080</code> (loopback), enforcing the safety stance from the MVP plan's risks table. Future <code>--unsafe-no-auth</code> flag will gate non-loopback binds explicitly.</td>
     </tr>
+    <tr>
+      <td>Step 3</td>
+      <td>Picked <code>go-git/v5</code> (pure Go, no shell-outs). Adds ~10 transitive deps; acceptable.</td>
+    </tr>
+    <tr>
+      <td>Step 3</td>
+      <td>Bare-clone <strong>mirror semantics</strong>: Fetch overrides go-git's default refspec with <code>+refs/heads/*:refs/heads/*</code> + <code>+refs/tags/*:refs/tags/*</code>. Otherwise incoming refs land in <code>refs/remotes/origin/*</code> and <code>refs/heads</code> stays stale — broke <code>TestFetch_PicksUpRemoteChanges</code> initially. Mirror semantics is exactly what a docs-store bare clone wants.</td>
+    </tr>
+    <tr>
+      <td>Step 3</td>
+      <td><code>Commit</code> is a single op (write blob → build tree → encode commit → update local ref → push). Callers don't deal with the local/remote split. If push fails after the local ref moves, the bare clone briefly leads remote; next fetch reconciles. Accept the risk for MVP.</td>
+    </tr>
+    <tr>
+      <td>Step 3</td>
+      <td>In-memory tree rebuild: <code>buildTree</code> walks parent subtrees, creates missing intermediate dirs, persists each modified tree as a new object. Stays inside go-git's object store APIs — no shelling out to <code>git</code>.</td>
+    </tr>
+    <tr>
+      <td>Step 3</td>
+      <td><code>RefKind</code> enum (<code>RefBranch</code> / <code>RefTag</code>) rather than a bool — extensible for future ref types (notes, snapshots).</td>
+    </tr>
+    <tr>
+      <td>Step 3</td>
+      <td>Tests shell out to the system <code>git</code> binary for fixture setup (bare init, commit, push). Pure-go-git fixture-building would mean re-implementing what we're testing. The system <code>git</code> dependency is acceptable — tests run on a dev machine or CI, both have it.</td>
+    </tr>
   </tbody>
 </table>
 
 <div class="panel-note">
-  <strong>Next concrete action:</strong> step 3 — <code>internal/gitstore</code>. Wrap <code>go-git</code> with <code>Init(remote, path)</code>, <code>Fetch()</code>, <code>ListRefs()</code>, <code>ReadBlob(ref, path)</code>, <code>Commit(ref, path, content, msg, author)</code>, <code>Push(ref)</code>. Bare clones only. Table-driven tests against a local <code>git init --bare</code> in <code>t.TempDir()</code>. Wire <code>cmdFetch</code> to actually fetch on success.
+  <strong>Next concrete action:</strong> step 4 — HTTP server. stdlib <code>net/http</code>. Routes <code>GET /p/{proj}/{ref}/{path...}</code> serving HTML from <code>gitstore.ReadBlob</code>; <code>GET /p/{proj}/{path...}</code> aliasing to the project's <code>trunk_ref</code>. 404 on missing blobs, 500 on internal errors. Branch-name-with-slash disambiguation deferred (MVP project uses simple branch names). Wire <code>cmdServe</code> to actually start the server.
 </div>
 
 <footer class="doc-foot">
