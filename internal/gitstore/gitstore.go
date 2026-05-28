@@ -51,6 +51,11 @@ type Ref struct {
 // Open returns a Store for path. If the bare clone doesn't exist yet,
 // it is created by cloning from remote. remote may be a URL or a local
 // filesystem path.
+//
+// After a fresh clone, Open also runs a mirror-semantic Fetch so all
+// remote branches land in refs/heads/* — go-git's default clone refspec
+// leaves non-default branches in refs/remotes/origin/* only, which
+// would break multi-branch reads.
 func Open(remote, path string) (*Store, error) {
 	if isBareRepo(path) {
 		repo, err := git.PlainOpen(path)
@@ -67,7 +72,14 @@ func Open(remote, path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("clone %s into %s: %w", remote, path, err)
 	}
-	return &Store{repo: repo, path: path}, nil
+	store := &Store{repo: repo, path: path}
+
+	// Re-fetch with mirror refspec so non-default branches populate
+	// refs/heads/*. Fast — the objects are already local, only refs move.
+	if err := store.Fetch(context.Background()); err != nil {
+		return nil, fmt.Errorf("mirror refs after clone: %w", err)
+	}
+	return store, nil
 }
 
 // Fetch updates the local bare clone from origin using mirror semantics:

@@ -74,8 +74,8 @@
 </header>
 
 <div>
-  <div class="stat"><strong>4 / 9</strong> steps complete</div>
-  <div class="stat"><strong>Gitstore landed</strong> phase</div>
+  <div class="stat"><strong>5 / 9</strong> steps complete</div>
+  <div class="stat"><strong>Server landed</strong> phase</div>
   <div class="stat"><strong>ADRs 001-003</strong> locked</div>
   <div class="stat"><strong>Single user</strong> mode for MVP</div>
 </div>
@@ -129,7 +129,7 @@ go.mod, go.sum</code></pre>
 
 <h2>Tracker</h2>
 
-<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 4 of 9 steps complete. Last updated 2026-05-28.</p>
+<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 5 of 9 steps complete. Last updated 2026-05-28.</p>
 
 <table>
   <thead>
@@ -162,9 +162,9 @@ go.mod, go.sum</code></pre>
     </tr>
     <tr>
       <td>4</td>
-      <td><strong>HTTP server</strong> — stdlib <code>net/http</code>. Routes: <code>GET /p/{proj}/{ref}/{path...}</code> serves HTML blob; <code>GET /p/{proj}/{path...}</code> resolves via trunk ref. Basic 404 / 500.</td>
-      <td><span class="badge badge-muted">Not started</span></td>
-      <td>No chrome / web UI yet — serve doc bytes as-is.</td>
+      <td><strong>HTTP server</strong> — stdlib <code>net/http</code>. Branch-aware routes per ADR-003. Wired into <code>cmdServe</code> with signal-driven graceful shutdown.</td>
+      <td><span class="badge badge-good">Done</span></td>
+      <td><code>internal/server</code> package. Go 1.22+ <code>ServeMux</code> pattern <code>GET /p/{proj}/{rest...}</code>. <code>resolveRefAndPath</code> tries first segment as a known ref (via <code>gitstore.ListRefs</code>); falls back to trunk-relative. 13 tests (resolver table, status codes, content types, real <code>httptest.Server</code> round-trip). <code>cmdServe</code> uses <code>signal.NotifyContext</code> + ctx-driven shutdown — SIGINT/SIGTERM triggers <code>httpSrv.Shutdown</code> with a 5s deadline. Smoke test against this repo: explicit ref, trunk alias, 404s, and bare-slug 301 redirect all behave.</td>
     </tr>
     <tr>
       <td>5</td>
@@ -305,11 +305,35 @@ go.mod, go.sum</code></pre>
       <td>Step 3</td>
       <td>Tests shell out to the system <code>git</code> binary for fixture setup (bare init, commit, push). Pure-go-git fixture-building would mean re-implementing what we're testing. The system <code>git</code> dependency is acceptable — tests run on a dev machine or CI, both have it.</td>
     </tr>
+    <tr>
+      <td>Step 4</td>
+      <td>Threaded <code>context.Context</code> through <code>run()</code> → <code>cmdServe</code> / <code>cmdFetch</code>. <code>main()</code> sets up a <code>signal.NotifyContext</code> for SIGINT/SIGTERM. Tests pass <code>context.Background()</code> or a cancellable ctx as needed. Cleaner than handling signals inside <code>cmdServe</code> directly.</td>
+    </tr>
+    <tr>
+      <td>Step 4</td>
+      <td>Go 1.22+ <code>ServeMux</code> patterns (<code>{rest...}</code> wildcard). No third-party router. The branch-vs-path ambiguity is resolved in a single handler that consults <code>gitstore.ListRefs</code> — if the first segment is a known ref, treat as explicit; otherwise trunk-relative.</td>
+    </tr>
+    <tr>
+      <td>Step 4</td>
+      <td><code>Open</code> now does a post-clone mirror Fetch to populate <code>refs/heads/*</code> for non-default branches. Without this, <code>TestHandler_ExplicitRefBranch</code> failed: go-git's default clone refspec puts non-default branches in <code>refs/remotes/origin/*</code> only, so <code>ListRefs</code> didn't see <code>feat-x</code>. Same root cause as the step 3 Fetch fix — now centralised in <code>Open</code>.</td>
+    </tr>
+    <tr>
+      <td>Step 4</td>
+      <td>Project-root URL <code>/p/{slug}</code> (no trailing slash) → 301 to <code>/p/{slug}/</code>. Keeps relative links in served docs (e.g. <code>plans/foo.html</code>'s <code>../index.html</code>) resolving against the project root, not against the server root.</td>
+    </tr>
+    <tr>
+      <td>Step 4</td>
+      <td>SHA-permalink form (<code>/p/{proj}/{sha}/...</code> per ADR-003) deferred. <code>isKnownRef</code> only matches against <code>ListRefs</code> output (branches + tags); SHA-prefixed URLs currently fall through to trunk-relative interpretation, which 404s. Follow-up task; not blocking MVP.</td>
+    </tr>
+    <tr>
+      <td>Step 4</td>
+      <td><code>Cache-Control: no-cache</code> on doc responses for MVP. Branch-stable docs can take a longer cache later (keyed by commit SHA, immutable per commit); not worth the cache-invalidation complexity now.</td>
+    </tr>
   </tbody>
 </table>
 
 <div class="panel-note">
-  <strong>Next concrete action:</strong> step 4 — HTTP server. stdlib <code>net/http</code>. Routes <code>GET /p/{proj}/{ref}/{path...}</code> serving HTML from <code>gitstore.ReadBlob</code>; <code>GET /p/{proj}/{path...}</code> aliasing to the project's <code>trunk_ref</code>. 404 on missing blobs, 500 on internal errors. Branch-name-with-slash disambiguation deferred (MVP project uses simple branch names). Wire <code>cmdServe</code> to actually start the server.
+  <strong>Next concrete action:</strong> step 5 — section-index auto-generation. When a request resolves to a directory (or to <code>{section}/index.html</code> not committed in the ref), generate an index page from the directory listing. Inline-CSS HTML matching <code>STYLE_AND_TEMPLATE.md</code>'s card-grid pattern. Uses <code>gitstore.ListDir</code>; falls through to existing 404 path if the dir is also missing.
 </div>
 
 <footer class="doc-foot">

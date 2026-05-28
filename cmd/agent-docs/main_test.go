@@ -2,12 +2,18 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestRun(t *testing.T) {
@@ -43,7 +49,7 @@ func TestRun(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			err := run(tt.args, &stdout, &stderr)
+			err := run(context.Background(), tt.args, &stdout, &stderr)
 
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
@@ -58,37 +64,13 @@ func TestRun(t *testing.T) {
 	}
 }
 
-func TestServeWithValidConfig(t *testing.T) {
-	cfgPath := writeTempConfig(t, validConfig)
-
-	var stdout, stderr bytes.Buffer
-	err := run([]string{"serve", "--config", cfgPath}, &stdout, &stderr)
-	if err == nil || !strings.Contains(err.Error(), "not implemented") {
-		t.Fatalf("err = %v, want 'not implemented'", err)
-	}
-	if !strings.Contains(stdout.String(), "would serve on 127.0.0.1:8080") {
-		t.Errorf("stdout = %q, missing serve preview", stdout.String())
-	}
-	if !strings.Contains(stdout.String(), "1 project(s) loaded") {
-		t.Errorf("stdout = %q, missing project count", stdout.String())
-	}
-}
-
-func TestServeAddrOverridesConfig(t *testing.T) {
-	cfgPath := writeTempConfig(t, validConfig)
-
-	var stdout, stderr bytes.Buffer
-	_ = run([]string{"serve", "--config", cfgPath, "--addr", "127.0.0.1:9999"}, &stdout, &stderr)
-	if !strings.Contains(stdout.String(), "127.0.0.1:9999") {
-		t.Errorf("stdout = %q, expected --addr override to appear", stdout.String())
-	}
-}
-
 func TestFetchUnknownProject(t *testing.T) {
 	cfgPath := writeTempConfig(t, validConfig)
 
 	var stdout, stderr bytes.Buffer
-	err := run([]string{"fetch", "--config", cfgPath, "--project", "does-not-exist"}, &stdout, &stderr)
+	err := run(context.Background(),
+		[]string{"fetch", "--config", cfgPath, "--project", "does-not-exist"},
+		&stdout, &stderr)
 	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Errorf("err = %v, want 'not found'", err)
 	}
@@ -106,11 +88,104 @@ clone_path = %q
 	cfgPath := writeTempConfig(t, cfg)
 
 	var stdout, stderr bytes.Buffer
-	if err := run([]string{"fetch", "--config", cfgPath}, &stdout, &stderr); err != nil {
+	if err := run(context.Background(),
+		[]string{"fetch", "--config", cfgPath}, &stdout, &stderr); err != nil {
 		t.Fatalf("fetch: %v\nstderr=%s", err, stderr.String())
 	}
 	if !strings.Contains(stdout.String(), "fetched fixture") {
 		t.Errorf("stdout = %q, missing 'fetched fixture'", stdout.String())
+	}
+}
+
+func TestServe_GracefulShutdownAndServesDocs(t *testing.T) {
+	remote := makeBareRemoteForTest(t)
+	clonePath := filepath.Join(t.TempDir(), "clone.git")
+
+	// Pick a free port so the test doesn't collide with anything.
+	port := freePort(t)
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+
+	cfg := fmt.Sprintf(`
+[[project]]
+slug = "fixture"
+remote = %q
+clone_path = %q
+`, remote, clonePath)
+	cfgPath := writeTempConfig(t, cfg)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	var stdout, stderr bytes.Buffer
+	var runErr error
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runErr = run(ctx, []string{"serve", "--config", cfgPath, "--addr", addr}, &stdout, &stderr)
+	}()
+
+	// Wait until the server is accepting connections (max ~2 s).
+	waitForListen(t, addr, 2*time.Second)
+
+	// Hit the README we set up in the bare-remote fixture.
+	res, err := http.Get("http://" + addr + "/p/fixture/README.md")
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200", res.StatusCode)
+	}
+	if !strings.Contains(string(body), "# test") {
+		t.Errorf("body = %q, want README content", body)
+	}
+
+	// Trigger graceful shutdown.
+	cancel()
+	wg.Wait()
+	if runErr != nil {
+		t.Errorf("run returned: %v\nstderr=%s", runErr, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "listening on") {
+		t.Errorf("stdout = %q, missing listen banner", stdout.String())
+	}
+}
+
+func TestServe_AddrOverridesConfigBind(t *testing.T) {
+	remote := makeBareRemoteForTest(t)
+	clonePath := filepath.Join(t.TempDir(), "clone.git")
+	port := freePort(t)
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+
+	// Config says one bind; --addr should win.
+	cfg := fmt.Sprintf(`
+bind = "127.0.0.1:1"
+
+[[project]]
+slug = "fixture"
+remote = %q
+clone_path = %q
+`, remote, clonePath)
+	cfgPath := writeTempConfig(t, cfg)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	var stdout, stderr bytes.Buffer
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_ = run(ctx, []string{"serve", "--config", cfgPath, "--addr", addr}, &stdout, &stderr)
+	}()
+	waitForListen(t, addr, 2*time.Second)
+	cancel()
+	wg.Wait()
+
+	if !strings.Contains(stdout.String(), addr) {
+		t.Errorf("stdout = %q, want listen banner with %q", stdout.String(), addr)
 	}
 }
 
@@ -120,6 +195,46 @@ slug = "test"
 remote = "/tmp/test.git"
 clone_path = "/tmp/clones/test"
 `
+
+func writeTempConfig(t *testing.T, contents string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	return path
+}
+
+// freePort returns an OS-assigned free TCP port on the loopback
+// interface. The listener is closed before returning so the caller can
+// bind to the port; there is a small race window where another process
+// could grab it, acceptable for tests.
+func freePort(t *testing.T) int {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("free port: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+	return port
+}
+
+// waitForListen polls until a TCP connect to addr succeeds, or fails the
+// test after timeout. Used to wait for serve to be ready.
+func waitForListen(t *testing.T, addr string, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", addr, 50*time.Millisecond)
+		if err == nil {
+			_ = conn.Close()
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("server did not start listening on %s within %s", addr, timeout)
+}
 
 // makeBareRemoteForTest creates a bare git repo with one commit on main
 // and returns its path. Mirrors the helper in internal/gitstore/gitstore_test.go;
@@ -158,13 +273,4 @@ func makeBareRemoteForTest(t *testing.T) string {
 		"commit", "-m", "initial")
 	run(workDir, "git", "push", "origin", "main")
 	return remoteDir
-}
-
-func writeTempConfig(t *testing.T, contents string) string {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "config.toml")
-	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
-	return path
 }

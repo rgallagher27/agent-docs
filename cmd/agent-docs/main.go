@@ -7,24 +7,32 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/rgallagher/agent-docs/internal/config"
 	"github.com/rgallagher/agent-docs/internal/gitstore"
+	"github.com/rgallagher/agent-docs/internal/server"
 )
 
 // version is the build-time version string. Set via -ldflags "-X main.version=…" at release time.
 var version = "dev"
 
 func main() {
-	if err := run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := run(ctx, os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, "agent-docs:", err)
 		os.Exit(1)
 	}
 }
 
-func run(args []string, stdout, stderr io.Writer) error {
+func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
 		printUsage(stdout)
 		return nil
@@ -33,9 +41,9 @@ func run(args []string, stdout, stderr io.Writer) error {
 	cmd, rest := args[0], args[1:]
 	switch cmd {
 	case "serve":
-		return cmdServe(rest, stdout, stderr)
+		return cmdServe(ctx, rest, stdout, stderr)
 	case "fetch":
-		return cmdFetch(rest, stdout, stderr)
+		return cmdFetch(ctx, rest, stdout, stderr)
 	case "version", "--version", "-v":
 		fmt.Fprintln(stdout, version)
 		return nil
@@ -62,12 +70,7 @@ Commands:
 Run "agent-docs <command> -h" for command-specific flags.`)
 }
 
-// errNotImplemented marks subcommands whose plumbing is scaffolded but whose
-// behavior lands in a later tracker step. Returning a concrete error keeps
-// the binary honest about its state and makes the exit code non-zero.
-var errNotImplemented = errors.New("not implemented yet — see docs-html/plans/2026-05-28-walking-skeleton-mvp.html")
-
-func cmdServe(args []string, stdout, stderr io.Writer) error {
+func cmdServe(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	addr := fs.String("addr", "", "HTTP listen address (overrides config 'bind'; loopback only unless --unsafe-no-auth is set)")
@@ -80,16 +83,51 @@ func cmdServe(args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+
 	bind := cfg.Bind
 	if *addr != "" {
 		bind = *addr
 	}
 
-	fmt.Fprintf(stdout, "would serve on %s; %d project(s) loaded from %s\n", bind, len(cfg.Projects), *cfgPath)
-	return fmt.Errorf("serve: %w (tracker steps 4–6)", errNotImplemented)
+	srv, err := server.New(cfg)
+	if err != nil {
+		return fmt.Errorf("init server: %w", err)
+	}
+
+	httpSrv := &http.Server{
+		Addr:              bind,
+		Handler:           srv.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		fmt.Fprintf(stdout, "agent-docs listening on %s (%d project(s))\n", bind, len(cfg.Projects))
+		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		fmt.Fprintln(stdout, "shutting down")
+	case err := <-errCh:
+		if err != nil {
+			return fmt.Errorf("listen: %w", err)
+		}
+		return nil
+	}
+
+	shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := httpSrv.Shutdown(shutCtx); err != nil {
+		return fmt.Errorf("shutdown: %w", err)
+	}
+	return nil
 }
 
-func cmdFetch(args []string, stdout, stderr io.Writer) error {
+func cmdFetch(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("fetch", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	cfgPath := fs.String("config", defaultConfigPath(), "Path to the config file")
@@ -108,7 +146,6 @@ func cmdFetch(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	ctx := context.Background()
 	for _, p := range targets {
 		store, err := gitstore.Open(p.Remote, p.ClonePath)
 		if err != nil {
