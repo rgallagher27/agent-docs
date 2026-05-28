@@ -293,6 +293,151 @@ func TestResolveRefAndPath(t *testing.T) {
 	}
 }
 
+func TestHandler_AutoIndex_DirectoryWithSlash(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	res, body := get(t, h, "/p/demo/main/plans/")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200\nbody=%s", res.StatusCode, body)
+	}
+	if got := res.Header.Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
+		t.Errorf("content-type = %q, want text/html", got)
+	}
+	for _, want := range []string{
+		"auto-generated",
+		"foo.html",
+		"bar.html",
+		`<h1>plans/</h1>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("body missing %q\n--- body ---\n%s", want, body)
+		}
+	}
+}
+
+func TestHandler_AutoIndex_RootOfRef(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	// /p/demo/main/ → root of main. Committed index.html exists, so the
+	// committed one wins over auto-index.
+	res, body := get(t, h, "/p/demo/main/")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", res.StatusCode)
+	}
+	if !strings.Contains(body, "<html>root</html>") {
+		t.Errorf("body = %q, want committed root index", body)
+	}
+	if strings.Contains(body, "auto-generated") {
+		t.Errorf("committed index.html should win over auto-index: %q", body)
+	}
+}
+
+func TestHandler_AutoIndex_DirectoryNoSlashRedirects(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	// /p/demo/main/plans → 301 to /p/demo/main/plans/
+	req := httptest.NewRequest(http.MethodGet, "/p/demo/main/plans", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMovedPermanently {
+		t.Fatalf("status = %d, want 301", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/p/demo/main/plans/" {
+		t.Errorf("location = %q, want /p/demo/main/plans/", loc)
+	}
+}
+
+func TestHandler_AutoIndex_ServesAtSectionIndexPath(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	// reviews/ has no committed index.html, so requesting /reviews/index.html
+	// hits the auto-index fallback rather than 404'ing.
+	res, body := get(t, h, "/p/demo/main/reviews/index.html")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200\nbody=%s", res.StatusCode, body)
+	}
+	if !strings.Contains(body, "r1.html") {
+		t.Errorf("auto-index for /reviews missing r1.html: %s", body)
+	}
+	if !strings.Contains(body, "auto-generated") {
+		t.Errorf("missing auto-generated marker: %s", body)
+	}
+}
+
+func TestHandler_AutoIndex_BreadcrumbLinks(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	_, body := get(t, h, "/p/demo/main/plans/")
+	for _, want := range []string{
+		`<a href="/p/demo/">demo</a>`,
+		`<a href="/p/demo/main/">main</a>`,
+		`<span>plans</span>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("breadcrumb missing %q\n--- body ---\n%s", want, body)
+		}
+	}
+}
+
+func TestConvertEntries(t *testing.T) {
+	got := convertEntries([]string{"foo.html", "index.html", "subdir/", "bar.html"})
+	if len(got) != 3 {
+		t.Fatalf("got %d entries, want 3 (index.html should be skipped)", len(got))
+	}
+	for _, e := range got {
+		if e.Label == "index.html" {
+			t.Errorf("index.html not omitted: %+v", got)
+		}
+	}
+
+	// Spot-check dir-flag derivation
+	var foundSubdir bool
+	for _, e := range got {
+		if e.Label == "subdir/" {
+			foundSubdir = true
+			if !e.IsDir {
+				t.Errorf("subdir/ should be flagged IsDir=true: %+v", got)
+			}
+		}
+	}
+	if !foundSubdir {
+		t.Errorf("subdir/ missing from converted entries: %+v", got)
+	}
+}
+
+func TestDirToList(t *testing.T) {
+	tests := []struct {
+		name    string
+		rest    string
+		path    string
+		wantDir string
+		wantOK  bool
+	}{
+		{"project root", "", "index.html", "", true},
+		{"ref root", "main/", "index.html", "", true},
+		{"section trailing slash", "main/plans/", "plans/", "plans", true},
+		{"section index.html", "main/plans/index.html", "plans/index.html", "plans", true},
+		{"deep section", "main/decisions/001/", "decisions/001/", "decisions/001", true},
+		{"plain file", "main/plans/foo.html", "plans/foo.html", "", false},
+		{"no-slash dir name", "main/plans", "plans", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDir, gotOK := dirToList(tt.rest, tt.path)
+			if gotDir != tt.wantDir || gotOK != tt.wantOK {
+				t.Errorf("got (%q, %v), want (%q, %v)", gotDir, gotOK, tt.wantDir, tt.wantOK)
+			}
+		})
+	}
+}
+
 func TestContentType(t *testing.T) {
 	tests := []struct {
 		path string

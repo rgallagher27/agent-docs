@@ -12,6 +12,7 @@ import (
 
 	"github.com/rgallagher/agent-docs/internal/config"
 	"github.com/rgallagher/agent-docs/internal/gitstore"
+	"github.com/rgallagher/agent-docs/internal/render"
 )
 
 // Server holds the open gitstore handles for each configured project
@@ -58,6 +59,10 @@ func (s *Server) handleProjectRoot(w http.ResponseWriter, r *http.Request) {
 // (ref, path) per ADR-003: if the first segment of rest is a known ref
 // in the project's bare clone, treat it as explicit; otherwise rest is
 // a trunk-relative path.
+//
+// When ReadBlob 404s, falls through to a section-index auto-generator
+// (per the MVP plan step 5) — directory URLs and {section}/index.html
+// requests get a card-grid listing.
 func (s *Server) handleDoc(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("proj")
 	rest := r.PathValue("rest")
@@ -74,15 +79,156 @@ func (s *Server) handleDoc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := entry.store.ReadBlob(ref, path)
-	if err != nil {
-		http.NotFound(w, r)
+	if content, err := entry.store.ReadBlob(ref, path); err == nil {
+		w.Header().Set("Content-Type", contentType(path))
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = w.Write(content)
 		return
 	}
 
-	w.Header().Set("Content-Type", contentType(path))
+	// Blob miss — try auto-generated section index.
+	if s.tryAutoIndex(w, r, entry, ref, rest, path) {
+		return
+	}
+
+	http.NotFound(w, r)
+}
+
+// tryAutoIndex handles directory-shaped requests after a blob miss.
+// Returns true if it wrote a response (either the index, a redirect,
+// or an error).
+func (s *Server) tryAutoIndex(w http.ResponseWriter, r *http.Request, entry *projectEntry, ref, rest, path string) bool {
+	dir, ok := dirToList(rest, path)
+	if !ok {
+		// No-slash directory case: /p/proj/main/plans → 301 to /plans/
+		if !strings.HasSuffix(rest, "/") && !strings.Contains(lastSegment(path), ".") {
+			if _, err := entry.store.ListDir(ref, path); err == nil {
+				http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+				return true
+			}
+		}
+		return false
+	}
+
+	entries, err := entry.store.ListDir(ref, dir)
+	if err != nil {
+		return false
+	}
+
+	page := buildIndexPage(entry.cfg.Slug, ref, entry.cfg.TrunkRef, rest, dir, entries)
+	body, err := render.RenderIndex(page)
+	if err != nil {
+		http.Error(w, "render index: "+err.Error(), http.StatusInternalServerError)
+		return true
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
-	_, _ = w.Write(content)
+	_, _ = w.Write(body)
+	return true
+}
+
+// dirToList returns the directory path to list for an auto-generated
+// index, and whether the request looks directory-shaped. True for an
+// empty rest (project root), a "/" trailing slash, or a "/index.html"
+// suffix.
+func dirToList(rest, path string) (string, bool) {
+	if rest == "" || path == "index.html" {
+		return "", true
+	}
+	if strings.HasSuffix(path, "/index.html") {
+		return strings.TrimSuffix(path, "/index.html"), true
+	}
+	if strings.HasSuffix(rest, "/") {
+		return strings.TrimSuffix(path, "/"), true
+	}
+	return "", false
+}
+
+// buildIndexPage composes the structured input render.RenderIndex
+// expects from request context plus the listed entries.
+func buildIndexPage(slug, ref, trunkRef, rest, dir string, entries []string) render.IndexPage {
+	usesExplicitRef := strings.HasPrefix(rest, ref+"/") || rest == ref+"/" || rest == ref
+	basePath := "/p/" + slug + "/"
+	if usesExplicitRef {
+		basePath += ref + "/"
+	}
+
+	displayDir := dir
+	if displayDir == "" {
+		displayDir = "/"
+	} else if !strings.HasSuffix(displayDir, "/") {
+		displayDir += "/"
+	}
+
+	title := slug
+	h1 := slug + "/"
+	if dir != "" {
+		title = slug + " / " + dir + " @ " + ref
+		h1 = displayDir
+	} else {
+		title = slug + " @ " + ref
+	}
+
+	return render.IndexPage{
+		Title:      title,
+		H1:         h1,
+		RefLabel:   ref,
+		Breadcrumb: buildBreadcrumb(slug, ref, trunkRef, usesExplicitRef, basePath, dir),
+		Entries:    convertEntries(entries),
+	}
+}
+
+func buildBreadcrumb(slug, ref, trunkRef string, usesExplicitRef bool, basePath, dir string) []render.Crumb {
+	crumbs := []render.Crumb{{Label: slug, Href: "/p/" + slug + "/"}}
+	if usesExplicitRef && ref != trunkRef {
+		crumbs = append(crumbs, render.Crumb{Label: ref, Href: "/p/" + slug + "/" + ref + "/"})
+	} else if usesExplicitRef {
+		// Explicit trunk URL — show ref segment as a clickable link too,
+		// so users can see they are on the trunk ref explicitly.
+		crumbs = append(crumbs, render.Crumb{Label: ref, Href: "/p/" + slug + "/" + ref + "/"})
+	}
+
+	if dir == "" {
+		// Mark the project (or ref) as current
+		crumbs[len(crumbs)-1].Href = ""
+		return crumbs
+	}
+
+	segments := strings.Split(dir, "/")
+	for i, seg := range segments {
+		isLast := i == len(segments)-1
+		href := basePath + strings.Join(segments[:i+1], "/") + "/"
+		if isLast {
+			crumbs = append(crumbs, render.Crumb{Label: seg})
+		} else {
+			crumbs = append(crumbs, render.Crumb{Label: seg, Href: href})
+		}
+	}
+	return crumbs
+}
+
+func convertEntries(names []string) []render.Entry {
+	out := make([]render.Entry, 0, len(names))
+	for _, n := range names {
+		if n == "index.html" {
+			// Skip — a committed index would have been served already.
+			continue
+		}
+		isDir := strings.HasSuffix(n, "/")
+		out = append(out, render.Entry{
+			Label: n,
+			Href:  n,
+			IsDir: isDir,
+		})
+	}
+	return out
+}
+
+func lastSegment(path string) string {
+	if i := strings.LastIndex(path, "/"); i >= 0 {
+		return path[i+1:]
+	}
+	return path
 }
 
 func (s *Server) lookupProject(slug string) *projectEntry {

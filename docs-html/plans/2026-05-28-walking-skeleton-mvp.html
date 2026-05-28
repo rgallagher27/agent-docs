@@ -74,8 +74,8 @@
 </header>
 
 <div>
-  <div class="stat"><strong>5 / 9</strong> steps complete</div>
-  <div class="stat"><strong>Server landed</strong> phase</div>
+  <div class="stat"><strong>6 / 9</strong> steps complete</div>
+  <div class="stat"><strong>Auto-index landed</strong> phase</div>
   <div class="stat"><strong>ADRs 001-003</strong> locked</div>
   <div class="stat"><strong>Single user</strong> mode for MVP</div>
 </div>
@@ -129,7 +129,7 @@ go.mod, go.sum</code></pre>
 
 <h2>Tracker</h2>
 
-<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 5 of 9 steps complete. Last updated 2026-05-28.</p>
+<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 6 of 9 steps complete. Last updated 2026-05-28.</p>
 
 <table>
   <thead>
@@ -168,9 +168,9 @@ go.mod, go.sum</code></pre>
     </tr>
     <tr>
       <td>5</td>
-      <td><strong>Section-index generator</strong> — when a request resolves to a directory or to <code>{section}/index.html</code> that isn't committed, generate a card-grid index from the directory listing. Inline-CSS HTML matching the style template.</td>
-      <td><span class="badge badge-muted">Not started</span></td>
-      <td>Use stdlib <code>html/template</code>. Generator is the only thing in <code>internal/render</code>.</td>
+      <td><strong>Section-index generator</strong> — card-grid HTML for directory URLs and uncommitted <code>{section}/index.html</code>.</td>
+      <td><span class="badge badge-good">Done</span></td>
+      <td><code>internal/render</code> package: <code>RenderIndex(IndexPage)</code> pure-fn returning bytes via <code>html/template</code> (safe escaping). Server's <code>handleDoc</code> falls through after a blob miss to <code>tryAutoIndex</code>; covers trailing-slash dirs, <code>/index.html</code> for uncommitted sections, no-slash dirs (301 to add slash). Committed <code>index.html</code> still wins (we try ReadBlob first). 13 new tests across render + server: empty dir, HTML escaping, breadcrumb correctness, content-type, redirect. Smoke-tested against this repo — root auto-index, nested dirs, and the existing <code>docs-html/index.html</code> serving committed content all behave.</td>
     </tr>
     <tr>
       <td>6</td>
@@ -329,11 +329,35 @@ go.mod, go.sum</code></pre>
       <td>Step 4</td>
       <td><code>Cache-Control: no-cache</code> on doc responses for MVP. Branch-stable docs can take a longer cache later (keyed by commit SHA, immutable per commit); not worth the cache-invalidation complexity now.</td>
     </tr>
+    <tr>
+      <td>Step 5</td>
+      <td><code>internal/render</code> as its own package — pure functions, no IO, no git imports. Server composes <code>IndexPage</code> structs from request context and calls <code>RenderIndex</code>. Clean dependency direction (server → render; never reverse).</td>
+    </tr>
+    <tr>
+      <td>Step 5</td>
+      <td><code>html/template</code> for the generator (not raw string concat) — pulls in automatic context-aware escaping for free. <code>TestRenderIndex_EscapesUserContent</code> verifies a <code>&lt;script&gt;</code> in <code>H1</code> and an <code>&quot;&gt;&lt;img&gt;</code> in an entry href both get neutralised.</td>
+    </tr>
+    <tr>
+      <td>Step 5</td>
+      <td>Fallback layered <em>after</em> the ReadBlob attempt, not before. A committed <code>index.html</code> always wins over auto-generation. Matches Apache / nginx <code>DirectoryIndex</code> semantics.</td>
+    </tr>
+    <tr>
+      <td>Step 5</td>
+      <td>No-trailing-slash directory URLs (<code>/p/proj/main/plans</code>) get a 301 to <code>/p/proj/main/plans/</code>. Required for relative links in the generated index to resolve correctly against the listed dir. Mirrors how every web server handles directory URLs.</td>
+    </tr>
+    <tr>
+      <td>Step 5</td>
+      <td>The generated index's inline CSS lives in a <code>const indexCSS</code> beside the template, not duplicated per file. Mirrors the style template's palette and typography so generated pages look the same family as LLM-authored docs.</td>
+    </tr>
+    <tr>
+      <td>Step 5</td>
+      <td><code>convertEntries</code> skips an <code>index.html</code> in the listing — if the dir has one committed, we'd have served it; if it doesn't, advertising a non-existent link would mislead.</td>
+    </tr>
   </tbody>
 </table>
 
 <div class="panel-note">
-  <strong>Next concrete action:</strong> step 5 — section-index auto-generation. When a request resolves to a directory (or to <code>{section}/index.html</code> not committed in the ref), generate an index page from the directory listing. Inline-CSS HTML matching <code>STYLE_AND_TEMPLATE.md</code>'s card-grid pattern. Uses <code>gitstore.ListDir</code>; falls through to existing 404 path if the dir is also missing.
+  <strong>Next concrete action:</strong> step 6 — MCP server. stdio transport, three tools: <code>write_doc(project, ref, path, content)</code>, <code>read_doc(project, ref, path)</code>, <code>list_docs(project, ref, section?)</code>. Writes go through <code>gitstore.Commit</code>. Reads through <code>gitstore.ReadBlob</code> / <code>ListDir</code>. Decide on Go SDK vs hand-rolled JSON-RPC on first commit (mcp-go is the obvious candidate — check API stability before depending on it).
 </div>
 
 <footer class="doc-foot">
