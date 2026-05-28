@@ -64,16 +64,16 @@
     <span class="tag">project-meta</span>
     <span class="tag">pre-code</span>
     <span class="tag">2026-05-28</span>
-    <span class="badge badge-info">MVP scoped</span>
+    <span class="badge badge-good">MVP shipped</span>
   </div>
   <p class="lead">A self-hostable, LLM-native documentation hub. Coding agents call typed MCP tools to maintain a canonical set of project docs — plans, feature docs, ADRs, reviews — rendered as a dense, navigable HTML site that lives next to the code in git.</p>
 </header>
 
 <div>
-  <div class="stat"><strong>13</strong> Go source files</div>
+  <div class="stat"><strong>14</strong> Go source files</div>
   <div class="stat"><strong>3</strong> ADRs accepted</div>
-  <div class="stat"><strong>1</strong> feature documented</div>
-  <div class="stat"><strong>1</strong> plan in progress (8/9)</div>
+  <div class="stat"><strong>1</strong> feature shipped</div>
+  <div class="stat"><strong>MVP plan</strong> 9/9 complete</div>
 </div>
 
 <h2>Start here</h2>
@@ -117,8 +117,8 @@
   <a href="decisions/001-repo-canonical-source-of-truth.html">001 (repo-canonical)</a>,
   <a href="decisions/002-html-canonical-no-source-language.html">002 (HTML-canonical, no source language)</a>,
   and <a href="decisions/003-branch-aware-urls-with-preview-lifecycle.html">003 (branch-aware URLs with preview lifecycle)</a>.
-  The <a href="plans/2026-05-28-walking-skeleton-mvp.html">walking-skeleton MVP plan</a> is in progress (8 / 9): scaffold, config, gitstore, HTTP server, section-index auto-generator, MCP server, and Claude Code wiring docs all landed. <a href="features/claude-code-integration.html">The feature doc</a> covers config setup, both wiring options, the end-to-end loop, and troubleshooting. <code>go test ./...</code> clean across six packages (~60 cases).
-  <strong>Next concrete action:</strong> tracker step 8 — end-to-end dogfood. Requires you to wire <code>agent-docs mcp</code> into Claude Code per the feature doc and restart. The new session validates the loop: <code>list_docs</code>, <code>read_doc</code>, <code>write_doc</code> against this very repo.
+  The <a href="plans/2026-05-28-walking-skeleton-mvp.html">walking-skeleton MVP plan</a> is <strong>complete (9 / 9)</strong>. Dogfood validated end-to-end: the LLM, talking to <code>agent-docs mcp</code> from Claude Code, wrote the <a href="reviews/2026-05-28-mvp-validation.html">validation review</a> via <code>write_doc</code> onto a feature branch and pushed to GitHub. The first attempt surfaced a real bug — stale go-git packfile index — which was fixed (with a regression test) inside the same session. <code>go test ./...</code> clean across six packages.
+  <strong>Next milestone candidates:</strong> auth + multi-user, branch lifecycle banners, cross-project web UI + search, a second-harness validation, webhook-driven ref discovery.
 </div>
 
 <p style="margin-top: 16px;">See <a href="architecture.html#open-questions">Architecture › Open questions</a> for the live list.</p>

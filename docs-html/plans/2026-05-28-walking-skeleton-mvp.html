@@ -68,16 +68,16 @@
     <span class="tag">plan</span>
     <span class="tag">mvp</span>
     <span class="tag">2026-05-28</span>
-    <span class="badge badge-warn">In progress</span>
+    <span class="badge badge-good">Complete</span>
   </div>
   <p class="lead">Prove the end-to-end loop. One project, one branch, one MCP client (Claude Code), one HTML doc created via MCP, pushed to git, served at a branch-scoped URL, edited, merged, URL still resolves.</p>
 </header>
 
 <div>
-  <div class="stat"><strong>8 / 9</strong> steps complete</div>
-  <div class="stat"><strong>Wiring documented</strong> phase</div>
+  <div class="stat"><strong>9 / 9</strong> steps complete</div>
+  <div class="stat"><strong>MVP shipped</strong> phase</div>
   <div class="stat"><strong>ADRs 001-003</strong> locked</div>
-  <div class="stat"><strong>Single user</strong> mode for MVP</div>
+  <div class="stat"><strong>Dogfood</strong> validated end-to-end</div>
 </div>
 
 <h2>Scope</h2>
@@ -129,7 +129,7 @@ go.mod, go.sum</code></pre>
 
 <h2>Tracker</h2>
 
-<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 8 of 9 steps complete. Last updated 2026-05-28.</p>
+<p style="margin-bottom: 4px;"><span class="badge badge-good">Complete</span> — 9 of 9 steps. Last updated 2026-05-28.</p>
 
 <table>
   <thead>
@@ -186,9 +186,9 @@ go.mod, go.sum</code></pre>
     </tr>
     <tr>
       <td>8</td>
-      <td><strong>End-to-end validation</strong> — full run-through documented in <code>reviews/YYYY-MM-DD-mvp-validation.html</code>. Create doc on a branch via MCP, push via gitstore, open URL, edit, merge to trunk, verify trunk URL.</td>
-      <td><span class="badge badge-muted">Not started</span></td>
-      <td>If this passes, MVP scope is complete and the next plan is feature broadening.</td>
+      <td><strong>End-to-end validation</strong> — Claude Code drives <code>write_doc</code> over MCP to commit + push a real validation review to <code>feat/mvp-validation</code>.</td>
+      <td><span class="badge badge-good">Done</span></td>
+      <td>Dogfood passed: commit <code>0da2aa2</code> on GitHub at <code>feat/mvp-validation</code>, authored by the LLM via <code>mcp__agent-docs__write_doc</code>. Full record in the resulting <a href="../reviews/2026-05-28-mvp-validation.html">validation review</a> (lives on the branch until merged). The first attempt surfaced a real bug — stale go-git packfile index in long-running MCP processes — which was fixed in <code>0e42848</code> and covered by <code>TestCommit_AfterOutOfBandFetch</code> before the retry succeeded.</td>
     </tr>
   </tbody>
 </table>
@@ -389,11 +389,19 @@ go.mod, go.sum</code></pre>
       <td>Step 7</td>
       <td>Other-harnesses section is intentionally vague — agent-docs speaks plain MCP-over-stdio, so anything MCP-compatible works. Concrete wiring instructions per harness (Codex, OpenCode, Cursor, Zed, Continue) get added as we (or contributors) actually verify them, not speculatively.</td>
     </tr>
+    <tr>
+      <td>Step 8</td>
+      <td>Dogfood passed on retry. First attempt found a real bug: <code>gitstore</code>'s cached go-git <code>Repository</code> handle has a stale packfile index when objects arrive out-of-band (a separate <code>agent-docs fetch</code> CLI, a <code>git push</code> into the bare). Symptoms: refs file-read fresh and point at new commits, but <code>CommitObject</code> reports "object not found". Fix: <code>Store.refresh()</code> calls <code>PlainOpen</code> before reads of the parent ref in <code>Commit</code>. Reads (<code>ReadBlob</code>/<code>ListDir</code>/<code>ListRefs</code>) deliberately not refreshed — they degrade gracefully and can be refreshed later if needed.</td>
+    </tr>
+    <tr>
+      <td>Step 8</td>
+      <td>Best validation outcome possible — the dogfood loop surfaced a bug in the system being dogfooded, captured it as a regression test, and shipped a fix all in the same session. Exactly what dogfooding is supposed to do.</td>
+    </tr>
   </tbody>
 </table>
 
-<div class="panel-note">
-  <strong>Next concrete action:</strong> step 8 — end-to-end dogfood validation. Requires you to wire <code>agent-docs mcp</code> into Claude Code per the <a href="../features/claude-code-integration.html">feature doc</a> and restart. In the resulting session, the LLM should be able to <code>list_docs</code>, <code>read_doc</code>, and <code>write_doc</code> against this very repo. The validation passes when a doc written via <code>write_doc</code> on a feature branch lands in git, is browsable via <code>agent-docs serve</code>, and a merge to <code>main</code> makes it visible at the trunk-alias URL. Result gets recorded as <code>reviews/2026-05-29-mvp-validation.html</code>.
+<div class="panel-good">
+  <strong>MVP complete.</strong> All 9 tracker steps done. Validation review at <a href="../reviews/2026-05-28-mvp-validation.html">reviews/2026-05-28-mvp-validation.html</a> (currently on <code>feat/mvp-validation</code>; merges to main when you choose). Next-milestone candidates (in rough priority): auth + multi-user, branch lifecycle banners (merged/deleted), cross-project web UI + search, second-harness validation (Codex / OpenCode / Cursor), webhook-driven ref discovery (ADR-003 Q12), structured push-failure errors.
 </div>
 
 <footer class="doc-foot">
