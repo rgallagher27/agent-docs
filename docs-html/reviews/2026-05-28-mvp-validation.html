@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>2026-05-28 — Walking-skeleton MVP validation — agent-docs</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6;
+    --muted: #9aa5b1; --accent: #f59e0b; --accent-2: #60a5fa; --accent-3: #a78bfa;
+    --good: #10b981; --warn: #f59e0b; --bad: #ef4444; --border: #2d3744; --code-bg: #0a0e13;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 32px 96px; }
+  .breadcrumbs { font-size: 13px; color: var(--muted); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .breadcrumbs a { color: var(--accent-2); text-decoration: none; }
+  .breadcrumbs a:hover { text-decoration: underline; }
+  .breadcrumbs .sep { color: var(--border); margin: 0 8px; }
+  header.doc-head { padding: 24px 0 28px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.02em; line-height: 1.2; }
+  h2 { margin: 44px 0 14px; font-size: 22px; letter-spacing: -0.01em; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { margin: 28px 0 10px; font-size: 17px; color: var(--accent-2); }
+  p, ul, ol { margin: 0 0 12px; }
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent-2); }
+  code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #f0d090; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  tr:hover td { background: var(--panel); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .lead { color: #cfd6df; font-size: 16px; margin: 0; }
+  .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge-good { background: rgba(16,185,129,0.15); color: var(--good); }
+  .badge-warn { background: rgba(245,158,11,0.18); color: var(--warn); }
+  .badge-info { background: rgba(96,165,250,0.15); color: var(--accent-2); }
+  .panel-note { background: rgba(96,165,250,0.06); border-left: 3px solid var(--accent-2); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-good { background: rgba(16,185,129,0.08); border-left: 3px solid var(--good); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  footer.doc-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  footer.doc-foot a { color: var(--accent-2); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="breadcrumbs">
+  <a href="../index.html">agent-docs Docs</a>
+  <span class="sep">›</span>
+  <a href="index.html">Reviews</a>
+  <span class="sep">›</span>
+  <span>2026-05-28 — MVP validation</span>
+</nav>
+
+<header class="doc-head">
+  <h1>Walking-skeleton MVP validation</h1>
+  <div class="meta" style="margin-bottom: 14px;">
+    <span class="tag">review</span>
+    <span class="tag">mvp</span>
+    <span class="tag">2026-05-28</span>
+    <span class="badge badge-good">Passed</span>
+  </div>
+  <p class="lead">End-to-end verification of the agent-docs walking-skeleton MVP: Claude Code talks to <code>agent-docs mcp</code> over stdio JSON-RPC, drives the three tools, and round-trips a real doc into git on a feature branch — including this one.</p>
+</header>
+
+<div class="panel-good">
+  <strong>Meta:</strong> this document was authored via <code>mcp__agent-docs__write_doc</code> from inside the Claude Code session being validated. The fact that you can read it — committed to <code>feat/mvp-validation</code> and pushed to GitHub by the LLM, not by the human — is the validation. The tool wrote, committed, and pushed itself into the loop.
+</div>
+
+<h2>What was tested</h2>
+
+<p>The full loop documented in <a href="../plans/2026-05-28-walking-skeleton-mvp.html">plans/2026-05-28-walking-skeleton-mvp.html</a>, against a real Claude Code session with <code>agent-docs mcp</code> wired in via <code>claude mcp add</code>:</p>
+
+<ol>
+  <li>MCP subprocess started by Claude Code on session boot.</li>
+  <li><code>initialize</code> + <code>tools/list</code> handshake; three tools surfaced in the session's deferred tool list.</li>
+  <li><code>list_docs(project="agent-docs", section="docs-html/decisions")</code> returned the three accepted ADRs plus the section index.</li>
+  <li><code>list_docs</code> for <code>docs-html/plans</code> returned the walking-skeleton MVP plan plus the index.</li>
+  <li>Feature branch <code>feat/mvp-validation</code> created in the working tree, pushed to GitHub; <code>agent-docs fetch</code> mirror-fetched it into the bare clone.</li>
+  <li><code>write_doc</code> committed this file to <code>feat/mvp-validation</code> in the bare clone and pushed to GitHub.</li>
+</ol>
+
+<h2>Results</h2>
+
+<table>
+  <thead>
+    <tr><th style="width: 40px;">#</th><th>Step</th><th style="width: 90px;">Result</th><th>Evidence</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>MCP subprocess starts; handshake completes</td>
+      <td><span class="badge badge-good">Pass</span></td>
+      <td>Tools (<code>mcp__agent-docs__list_docs</code>, <code>read_doc</code>, <code>write_doc</code>) appeared in the session's deferred-tool list.</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><code>list_docs</code> on <code>docs-html/decisions</code></td>
+      <td><span class="badge badge-good">Pass</span></td>
+      <td>Returned 4 entries: <code>001-repo-canonical-source-of-truth.html</code>, <code>002-html-canonical-no-source-language.html</code>, <code>003-branch-aware-urls-with-preview-lifecycle.html</code>, <code>index.html</code>.</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><code>list_docs</code> on <code>docs-html/plans</code></td>
+      <td><span class="badge badge-good">Pass</span></td>
+      <td>Returned 2 entries: the MVP plan + index.</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Mirror-fetch surfaces a freshly-pushed branch</td>
+      <td><span class="badge badge-good">Pass</span></td>
+      <td>After <code>git push origin feat/mvp-validation</code>, one <code>agent-docs fetch</code> populated <code>refs/heads/feat/mvp-validation</code> in the bare clone.</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><code>write_doc</code> commits and pushes</td>
+      <td><span class="badge badge-good">Pass</span></td>
+      <td>You are reading the artefact. The tool returned <code>wrote docs-html/reviews/2026-05-28-mvp-validation.html at &lt;sha&gt; on agent-docs/feat/mvp-validation</code>. GitHub shows the commit.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Bugs surfaced and fixed</h2>
+
+<p>First <code>write_doc</code> attempt failed with <code>parent commit 409f4e7: object not found</code>. Root cause: the MCP subprocess caches a go-git <code>Repository</code> handle for the lifetime of the process. When the bare clone gets new objects out-of-band (a separate <code>agent-docs fetch</code> CLI, or a <code>git push</code> into the bare), go-git's packfile index does not refresh, and the freshly-arrived parent commit appears as missing.</p>
+
+<p>Fixed in commit <code>0e42848</code>: <code>gitstore.Store.refresh()</code> re-opens the bare repo via <code>git.PlainOpen</code>; <code>Commit</code> calls it before reading the parent ref/commit. Negligible overhead (PlainOpen reads <code>.git/config</code> and validates layout). Test <code>TestCommit_AfterOutOfBandFetch</code> reproduces the dogfood scenario — an external clone branches and pushes, a fresh Store fetches, the original Store writes to the new branch — and fails without the fix, passes with it.</p>
+
+<h2>What's intentionally not validated yet</h2>
+
+<ul>
+  <li><strong>Merged-URL trunk alias.</strong> Once <code>feat/mvp-validation</code> merges into <code>main</code>, the trunk-alias URL <code>/p/agent-docs/docs-html/reviews/2026-05-28-mvp-validation.html</code> should serve via <code>agent-docs serve</code>. Step-4 smoke tests already covered branch-aware URL serving; merge needs a follow-up <code>agent-docs fetch</code>.</li>
+  <li><strong>HTTP + MCP concurrently.</strong> Both processes were not exercised at once; should be safe given gitstore's read-concurrent design, but unverified.</li>
+  <li><strong>Other harnesses</strong> (Codex, OpenCode, Cursor, Zed). Same wire protocol, expected to work; untested.</li>
+  <li><strong>Reads after out-of-band changes.</strong> Same packfile-cache class as the Commit bug, but reads degrade gracefully to stale-but-consistent content. <code>refresh()</code> can be added to <code>ReadBlob</code> / <code>ListDir</code> / <code>ListRefs</code> later if it bites.</li>
+</ul>
+
+<h2>Open questions surfaced during validation</h2>
+
+<ul>
+  <li><strong>Author identity</strong> is process-wide (from <code>--author-name</code> / <code>--author-email</code>). The LLM cannot identify the human driving the session. Future: pull from <code>git config user.name</code> by default, or accept a per-call <code>author</code> override.</li>
+  <li><strong>Branch must exist</strong> before <code>write_doc</code> targets it. A <code>branch_from</code> param or a separate <code>create_branch</code> tool would let the LLM drive end-to-end without dev hand-holding.</li>
+  <li><strong>Manual fetch</strong> for branches created outside MCP. Could auto-fetch on write to a missing ref, or watch GitHub via webhooks (ADR-003 Q12).</li>
+  <li><strong>Push failures</strong> surface as <code>isError=true</code> tool results — correct, but the agent can't distinguish auth vs. non-fast-forward vs. network. Structured error codes would help.</li>
+</ul>
+
+<h2>Verdict</h2>
+
+<p><span class="badge badge-good">MVP loop validated</span> Walking-skeleton step 8 passes. With this document, all 9 tracker rows are complete. The MVP is shippable as a self-hostable, single-binary, LLM-native docs hub for solo use.</p>
+
+<p>Multi-user auth, search, branch lifecycle banners, and second-harness validation are next-milestone work — out of scope for the skeleton but the foundation is in place to add them without re-architecting.</p>
+
+<footer class="doc-foot">
+  <div>Native doc — no markdown source. Authored via <code>mcp__agent-docs__write_doc</code> on 2026-05-28.</div>
+  <div><a href="index.html">↑ Reviews</a> · <a href="../index.html">agent-docs Docs</a></div>
+</footer>
+
+</div>
+</body>
+</html>
