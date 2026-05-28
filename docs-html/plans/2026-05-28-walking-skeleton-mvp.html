@@ -74,8 +74,8 @@
 </header>
 
 <div>
-  <div class="stat"><strong>6 / 9</strong> steps complete</div>
-  <div class="stat"><strong>Auto-index landed</strong> phase</div>
+  <div class="stat"><strong>7 / 9</strong> steps complete</div>
+  <div class="stat"><strong>MCP landed</strong> phase</div>
   <div class="stat"><strong>ADRs 001-003</strong> locked</div>
   <div class="stat"><strong>Single user</strong> mode for MVP</div>
 </div>
@@ -129,7 +129,7 @@ go.mod, go.sum</code></pre>
 
 <h2>Tracker</h2>
 
-<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 6 of 9 steps complete. Last updated 2026-05-28.</p>
+<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 7 of 9 steps complete. Last updated 2026-05-28.</p>
 
 <table>
   <thead>
@@ -174,9 +174,9 @@ go.mod, go.sum</code></pre>
     </tr>
     <tr>
       <td>6</td>
-      <td><strong>MCP server</strong> — stdio transport. Tools: <code>write_doc(project, ref, path, content)</code>, <code>read_doc(project, ref, path)</code>, <code>list_docs(project, ref, section?)</code>. Writes flow through gitstore.</td>
-      <td><span class="badge badge-muted">Not started</span></td>
-      <td>Use the official MCP Go SDK if it covers stdio cleanly; otherwise hand-roll over stdio JSON-RPC (protocol is small).</td>
+      <td><strong>MCP server</strong> — stdio transport. Three tools wired to gitstore: <code>write_doc</code>, <code>read_doc</code>, <code>list_docs</code>.</td>
+      <td><span class="badge badge-good">Done</span></td>
+      <td><code>internal/mcp</code> package, hand-rolled JSON-RPC 2.0 over NDJSON stdio (~400 LOC, zero new deps). <code>initialize</code> handshake declares protocol version <code>2024-11-05</code>; <code>tools/list</code> advertises typed schemas with descriptions referencing the section/filename conventions; <code>tools/call</code> dispatches with tool errors surfaced as <code>isError</code> content blocks (not protocol errors). New <code>agent-docs mcp</code> subcommand uses real <code>os.Stdin</code>/<code>os.Stdout</code> for framing; logs to stderr. 12 tests including a write-then-list round-trip. Smoke-tested end-to-end: initialize, tools/list, list_docs on this repo's <code>decisions/</code>, read_doc on ADR-001 — all return correct payloads.</td>
     </tr>
     <tr>
       <td>7</td>
@@ -353,11 +353,35 @@ go.mod, go.sum</code></pre>
       <td>Step 5</td>
       <td><code>convertEntries</code> skips an <code>index.html</code> in the listing — if the dir has one committed, we'd have served it; if it doesn't, advertising a non-existent link would mislead.</td>
     </tr>
+    <tr>
+      <td>Step 6</td>
+      <td>Hand-rolled JSON-RPC over stdio rather than depending on an MCP Go SDK. The protocol surface we need (initialize, tools/list, tools/call, ping, the initialized notification) fits in ~400 LOC; zero new dependencies; clean alignment with the "minimal deps" stance. Re-evaluate if we need prompts/resources/sampling later.</td>
+    </tr>
+    <tr>
+      <td>Step 6</td>
+      <td>NDJSON framing — one JSON-RPC envelope per stdin line, per the MCP stdio spec. <code>bufio.Scanner</code> with a 4 MiB max line buffer (doc bodies can be large; MVP keeps a generous ceiling).</td>
+    </tr>
+    <tr>
+      <td>Step 6</td>
+      <td>Tool errors surface as <code>isError=true</code> content blocks in the <code>tools/call</code> result, not as JSON-RPC protocol errors. Matches the MCP spec — protocol errors are reserved for transport-level problems (malformed JSON, unknown method); tool failures are a normal part of the agent's interaction.</td>
+    </tr>
+    <tr>
+      <td>Step 6</td>
+      <td>Author identity for write commits comes from <code>--author-name</code> / <code>--author-email</code> flags on <code>agent-docs mcp</code>. Default <code>agent-docs@local.invalid</code> for first-run convenience; operators are expected to override for real deployments. Future: pull from the agent's session metadata if MCP grows that capability.</td>
+    </tr>
+    <tr>
+      <td>Step 6</td>
+      <td>The <code>mcp</code> subcommand uses real <code>os.Stdin</code> / <code>os.Stdout</code> for the protocol framing (not the <code>io.Writer</code> params plumbed through <code>run()</code>). Tests exercise <code>mcp.Server.Serve</code> with <code>bytes.Buffer</code>s directly, which is sufficient — the cmd-level wiring is a thin shim.</td>
+    </tr>
+    <tr>
+      <td>Step 6</td>
+      <td>Tool descriptions are explicit about conventions (<code>plans/YYYY-MM-DD-{slug}.html</code>, <code>decisions/NNN-{name}.html</code>) and point at <code>STYLE_AND_TEMPLATE.md</code>. The LLM has no other signal for "how do I shape this doc"; the schema descriptions ARE the spec it sees.</td>
+    </tr>
   </tbody>
 </table>
 
 <div class="panel-note">
-  <strong>Next concrete action:</strong> step 6 — MCP server. stdio transport, three tools: <code>write_doc(project, ref, path, content)</code>, <code>read_doc(project, ref, path)</code>, <code>list_docs(project, ref, section?)</code>. Writes go through <code>gitstore.Commit</code>. Reads through <code>gitstore.ReadBlob</code> / <code>ListDir</code>. Decide on Go SDK vs hand-rolled JSON-RPC on first commit (mcp-go is the obvious candidate — check API stability before depending on it).
+  <strong>Next concrete action:</strong> step 7 — Claude Code wiring. Write the MCP config snippet (<code>~/.config/claude-code/mcp.json</code> or the equivalent project-local config), document the loop in a feature doc under <code>docs-html/features/</code>, and verify end-to-end by adding agent-docs as an MCP server in this very Claude Code session — the LLM writing docs about itself, via itself.
 </div>
 
 <footer class="doc-foot">

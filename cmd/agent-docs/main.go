@@ -16,6 +16,7 @@ import (
 
 	"github.com/rgallagher/agent-docs/internal/config"
 	"github.com/rgallagher/agent-docs/internal/gitstore"
+	"github.com/rgallagher/agent-docs/internal/mcp"
 	"github.com/rgallagher/agent-docs/internal/server"
 )
 
@@ -44,6 +45,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return cmdServe(ctx, rest, stdout, stderr)
 	case "fetch":
 		return cmdFetch(ctx, rest, stdout, stderr)
+	case "mcp":
+		return cmdMCP(ctx, rest, stdout, stderr)
 	case "version", "--version", "-v":
 		fmt.Fprintln(stdout, version)
 		return nil
@@ -62,12 +65,38 @@ Usage:
   agent-docs <command> [flags]
 
 Commands:
-  serve     Start the HTTP and MCP servers.
+  serve     Start the HTTP server.
   fetch     Fetch latest refs for one or all configured projects.
+  mcp       Run the MCP server over stdio (for LLM harness integration).
   version   Print the version and exit.
   help      Show this message.
 
 Run "agent-docs <command> -h" for command-specific flags.`)
+}
+
+func cmdMCP(ctx context.Context, args []string, _, stderr io.Writer) error {
+	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	cfgPath := fs.String("config", defaultConfigPath(), "Path to the config file")
+	authorName := fs.String("author-name", "agent-docs", "Name recorded on commits made through MCP write_doc")
+	authorEmail := fs.String("author-email", "agent-docs@local.invalid", "Email recorded on commits made through MCP write_doc")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	cfg, err := config.Load(*cfgPath)
+	if err != nil {
+		return err
+	}
+
+	srv, err := mcp.New(cfg, gitstore.Author{Name: *authorName, Email: *authorEmail})
+	if err != nil {
+		return fmt.Errorf("init mcp: %w", err)
+	}
+
+	// MCP stdio: stdin/stdout are reserved for the protocol; logs to stderr.
+	fmt.Fprintf(stderr, "agent-docs mcp: ready (%d project(s))\n", len(cfg.Projects))
+	return srv.Serve(ctx, os.Stdin, os.Stdout, stderr)
 }
 
 func cmdServe(ctx context.Context, args []string, stdout, stderr io.Writer) error {
