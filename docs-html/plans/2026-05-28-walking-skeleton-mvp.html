@@ -74,8 +74,8 @@
 </header>
 
 <div>
-  <div class="stat"><strong>2 / 9</strong> steps complete</div>
-  <div class="stat"><strong>Scaffolded</strong> phase</div>
+  <div class="stat"><strong>3 / 9</strong> steps complete</div>
+  <div class="stat"><strong>Config landed</strong> phase</div>
   <div class="stat"><strong>ADRs 001-003</strong> locked</div>
   <div class="stat"><strong>Single user</strong> mode for MVP</div>
 </div>
@@ -129,7 +129,7 @@ go.mod, go.sum</code></pre>
 
 <h2>Tracker</h2>
 
-<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 2 of 9 steps complete. Last updated 2026-05-28.</p>
+<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 3 of 9 steps complete. Last updated 2026-05-28.</p>
 
 <table>
   <thead>
@@ -150,9 +150,9 @@ go.mod, go.sum</code></pre>
     </tr>
     <tr>
       <td>2</td>
-      <td><strong>Config loading</strong> — single config file (TOML or JSON, decide on first commit) at <code>~/.agent-docs/config.toml</code>. Projects list: slug, remote URL, bare-clone path, trunk ref.</td>
-      <td><span class="badge badge-muted">Not started</span></td>
-      <td>Lean toward TOML (BurntSushi/toml — single small dep) for readability. Confirm on commit.</td>
+      <td><strong>Config loading</strong> — TOML at <code>~/.agent-docs/config.toml</code>. Projects list: slug, remote URL, bare-clone path, trunk ref.</td>
+      <td><span class="badge badge-good">Done</span></td>
+      <td><code>internal/config</code> package with <code>Config</code> / <code>Project</code> structs, <code>Load(path)</code>, <code>(*Config).Validate()</code>. Defaults applied in-place (bind=127.0.0.1:8080, trunk_ref=main). 8 table-driven cases pass against fixtures in <code>internal/config/testdata/</code>. <code>cmdServe</code> / <code>cmdFetch</code> now require a valid config to reach their stubs; <code>--addr</code> overrides config bind.</td>
     </tr>
     <tr>
       <td>3</td>
@@ -261,11 +261,31 @@ go.mod, go.sum</code></pre>
       <td>Step 1</td>
       <td><code>run()</code> extracted from <code>main()</code> and takes <code>(args, stdout, stderr)</code> so it's table-test-driveable without touching <code>os.Args</code> or process I/O.</td>
     </tr>
+    <tr>
+      <td>Step 2</td>
+      <td>TOML over JSON, via <code>github.com/BurntSushi/toml</code> v1.6.0. First (and so far only) external dep. JSON would have been stdlib-only but hand-edited config readability matters too much for self-hosters.</td>
+    </tr>
+    <tr>
+      <td>Step 2</td>
+      <td><code>(*Config).Validate()</code> mutates to apply defaults <em>and</em> validates. Single entry point. Idempotent. Avoids the two-phase trap where someone forgets to call <code>ApplyDefaults</code> before <code>Validate</code>.</td>
+    </tr>
+    <tr>
+      <td>Step 2</td>
+      <td>Config-or-die: <code>serve</code> and <code>fetch</code> require a valid config to proceed. No silent zero-project runs.</td>
+    </tr>
+    <tr>
+      <td>Step 2</td>
+      <td><code>--addr</code> on <code>serve</code> overrides the config's <code>bind</code>. CLI flag wins over file value — standard ergonomics.</td>
+    </tr>
+    <tr>
+      <td>Step 2</td>
+      <td>Default bind is <code>127.0.0.1:8080</code> (loopback), enforcing the safety stance from the MVP plan's risks table. Future <code>--unsafe-no-auth</code> flag will gate non-loopback binds explicitly.</td>
+    </tr>
   </tbody>
 </table>
 
 <div class="panel-note">
-  <strong>Next concrete action:</strong> step 2 — config loading. Decide TOML vs JSON on first commit (lean TOML, single small dep), define the <code>Project</code> struct (<code>slug</code>, <code>remote</code>, <code>clone_path</code>, <code>trunk_ref</code>), wire <code>--config</code> resolution in <code>cmdServe</code> and <code>cmdFetch</code>, and add table-driven tests for the loader against fixture files in <code>internal/config/testdata/</code>.
+  <strong>Next concrete action:</strong> step 3 — <code>internal/gitstore</code>. Wrap <code>go-git</code> with <code>Init(remote, path)</code>, <code>Fetch()</code>, <code>ListRefs()</code>, <code>ReadBlob(ref, path)</code>, <code>Commit(ref, path, content, msg, author)</code>, <code>Push(ref)</code>. Bare clones only. Table-driven tests against a local <code>git init --bare</code> in <code>t.TempDir()</code>. Wire <code>cmdFetch</code> to actually fetch on success.
 </div>
 
 <footer class="doc-foot">

@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -22,8 +24,18 @@ func TestRun(t *testing.T) {
 		{name: "--version prints version", args: []string{"--version"}, wantStdout: "dev"},
 		{name: "-v prints version", args: []string{"-v"}, wantStdout: "dev"},
 		{name: "unknown command errors", args: []string{"banana"}, wantErr: true, errContains: "unknown command"},
-		{name: "serve is not implemented yet", args: []string{"serve"}, wantErr: true, errContains: "not implemented"},
-		{name: "fetch is not implemented yet", args: []string{"fetch"}, wantErr: true, errContains: "not implemented"},
+		{
+			name:        "serve with missing config errors",
+			args:        []string{"serve", "--config", "/no/such/config.toml"},
+			wantErr:     true,
+			errContains: "read config",
+		},
+		{
+			name:        "fetch with missing config errors",
+			args:        []string{"fetch", "--config", "/no/such/config.toml"},
+			wantErr:     true,
+			errContains: "read config",
+		},
 	}
 
 	for _, tt := range tests {
@@ -42,4 +54,69 @@ func TestRun(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestServeWithValidConfig(t *testing.T) {
+	cfgPath := writeTempConfig(t, validConfig)
+
+	var stdout, stderr bytes.Buffer
+	err := run([]string{"serve", "--config", cfgPath}, &stdout, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "not implemented") {
+		t.Fatalf("err = %v, want 'not implemented'", err)
+	}
+	if !strings.Contains(stdout.String(), "would serve on 127.0.0.1:8080") {
+		t.Errorf("stdout = %q, missing serve preview", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "1 project(s) loaded") {
+		t.Errorf("stdout = %q, missing project count", stdout.String())
+	}
+}
+
+func TestServeAddrOverridesConfig(t *testing.T) {
+	cfgPath := writeTempConfig(t, validConfig)
+
+	var stdout, stderr bytes.Buffer
+	_ = run([]string{"serve", "--config", cfgPath, "--addr", "127.0.0.1:9999"}, &stdout, &stderr)
+	if !strings.Contains(stdout.String(), "127.0.0.1:9999") {
+		t.Errorf("stdout = %q, expected --addr override to appear", stdout.String())
+	}
+}
+
+func TestFetchUnknownProject(t *testing.T) {
+	cfgPath := writeTempConfig(t, validConfig)
+
+	var stdout, stderr bytes.Buffer
+	err := run([]string{"fetch", "--config", cfgPath, "--project", "does-not-exist"}, &stdout, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Errorf("err = %v, want 'not found'", err)
+	}
+}
+
+func TestFetchAllProjects(t *testing.T) {
+	cfgPath := writeTempConfig(t, validConfig)
+
+	var stdout, stderr bytes.Buffer
+	err := run([]string{"fetch", "--config", cfgPath}, &stdout, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "not implemented") {
+		t.Fatalf("err = %v, want 'not implemented'", err)
+	}
+	if !strings.Contains(stdout.String(), "<all 1 projects>") {
+		t.Errorf("stdout = %q, missing all-projects preview", stdout.String())
+	}
+}
+
+const validConfig = `
+[[project]]
+slug = "test"
+remote = "/tmp/test.git"
+clone_path = "/tmp/clones/test"
+`
+
+func writeTempConfig(t *testing.T, contents string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	return path
 }

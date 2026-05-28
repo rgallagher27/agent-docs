@@ -1,0 +1,3 @@
+[[project]]
+slug = "foo"
+clone_path = "/tmp/clones/foo"

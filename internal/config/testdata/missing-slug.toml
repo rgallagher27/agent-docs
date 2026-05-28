@@ -1,0 +1,3 @@
+[[project]]
+remote = "git@github.com:org/foo.git"
+clone_path = "/tmp/clones/foo"

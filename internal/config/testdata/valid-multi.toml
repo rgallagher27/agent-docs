@@ -1,0 +1,10 @@
+[[project]]
+slug = "foo"
+remote = "git@github.com:org/foo.git"
+clone_path = "/tmp/clones/foo"
+
+[[project]]
+slug = "bar"
+remote = "git@github.com:org/bar.git"
+clone_path = "/tmp/clones/bar"
+trunk_ref = "trunk"

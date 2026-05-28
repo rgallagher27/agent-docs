@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/rgallagher/agent-docs/internal/config"
 )
 
 // version is the build-time version string. Set via -ldflags "-X main.version=…" at release time.
@@ -66,12 +68,22 @@ var errNotImplemented = errors.New("not implemented yet — see docs-html/plans/
 func cmdServe(args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	addr := fs.String("addr", "127.0.0.1:8080", "HTTP listen address (loopback only unless --unsafe-no-auth is set)")
+	addr := fs.String("addr", "", "HTTP listen address (overrides config 'bind'; loopback only unless --unsafe-no-auth is set)")
 	cfgPath := fs.String("config", defaultConfigPath(), "Path to the config file")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "would serve on %s with config %s\n", *addr, *cfgPath)
+
+	cfg, err := config.Load(*cfgPath)
+	if err != nil {
+		return err
+	}
+	bind := cfg.Bind
+	if *addr != "" {
+		bind = *addr
+	}
+
+	fmt.Fprintf(stdout, "would serve on %s; %d project(s) loaded from %s\n", bind, len(cfg.Projects), *cfgPath)
 	return fmt.Errorf("serve: %w (tracker steps 4–6)", errNotImplemented)
 }
 
@@ -83,12 +95,29 @@ func cmdFetch(args []string, stdout, stderr io.Writer) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
+	cfg, err := config.Load(*cfgPath)
+	if err != nil {
+		return err
+	}
+
 	target := *project
 	if target == "" {
-		target = "<all projects>"
+		target = fmt.Sprintf("<all %d projects>", len(cfg.Projects))
+	} else if !hasProject(cfg, target) {
+		return fmt.Errorf("fetch: project %q not found in %s", target, *cfgPath)
 	}
-	fmt.Fprintf(stdout, "would fetch %s with config %s\n", target, *cfgPath)
+	fmt.Fprintf(stdout, "would fetch %s from %s\n", target, *cfgPath)
 	return fmt.Errorf("fetch: %w (tracker step 3)", errNotImplemented)
+}
+
+func hasProject(c *config.Config, slug string) bool {
+	for _, p := range c.Projects {
+		if p.Slug == slug {
+			return true
+		}
+	}
+	return false
 }
 
 func defaultConfigPath() string {
