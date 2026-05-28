@@ -258,6 +258,73 @@ func TestListDir(t *testing.T) {
 	}
 }
 
+func TestCommit_AfterOutOfBandFetch(t *testing.T) {
+	// Reproduces the dogfood bug from 2026-05-28: an external process
+	// pushes a new branch to the remote and runs `agent-docs fetch`,
+	// so the bare clone's refs/heads/{branch} ref appears and points
+	// at a commit object the long-running Store's go-git handle has
+	// never seen. Without Commit's pre-write refresh, this fails with
+	// "object not found"; with it, the commit lands.
+	remote := makeBareRemote(t)
+	clonePath := filepath.Join(t.TempDir(), "clone.git")
+	store, err := Open(remote, clonePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// External producer: clone the remote, branch + push.
+	work := filepath.Join(t.TempDir(), "external-work")
+	run := func(dir, name string, args ...string) {
+		t.Helper()
+		cmd := exec.Command(name, args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("%s %v: %v\n%s", name, args, err, out)
+		}
+	}
+	if err := os.MkdirAll(work, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run("", "git", "clone", remote, work)
+	run(work, "git", "checkout", "-b", "feat/external")
+	if err := os.WriteFile(filepath.Join(work, "EXT.md"), []byte("ext\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(work, "git", "add", "EXT.md")
+	run(work, "git",
+		"-c", "user.name=Ext", "-c", "user.email=e@e",
+		"commit", "-m", "external add")
+	run(work, "git", "push", "origin", "feat/external")
+
+	// Out-of-band fetch from a parallel "process": go-git Fetch into
+	// the bare clone via a fresh Store handle (mimicking
+	// `agent-docs fetch` running in another shell). This updates the
+	// bare clone's refs and objects on disk, but the original `store`
+	// handle's packfile index has not been refreshed.
+	freshStore, err := Open(remote, clonePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := freshStore.Fetch(context.Background()); err != nil {
+		t.Fatalf("oob fetch: %v", err)
+	}
+
+	// Original `store` writes to the newly-arrived branch. Without
+	// the refresh inside Commit, the parent-commit lookup would fail
+	// with "object not found" because the packfile holding it landed
+	// after this Store was opened.
+	sha, err := store.Commit(context.Background(), "feat/external",
+		"hello.html", []byte("<html>hi</html>"),
+		"add from original store after oob fetch",
+		Author{Name: "T", Email: "t@t"})
+	if err != nil {
+		t.Fatalf("Commit on out-of-band branch: %v", err)
+	}
+	if len(sha) != 40 {
+		t.Errorf("sha = %q, want 40 hex chars", sha)
+	}
+}
+
 func TestFetch_NoOpWhenUpToDate(t *testing.T) {
 	s := openStore(t)
 	if err := s.Fetch(context.Background()); err != nil {

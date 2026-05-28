@@ -196,6 +196,15 @@ func (s *Store) Commit(ctx context.Context, ref, path string, content []byte, ms
 		return "", errors.New("author name and email are required")
 	}
 
+	// Re-open the bare repo so we see any objects/refs added by other
+	// processes since this Store was created — a separate `agent-docs
+	// fetch`, a `git push` into the clone, etc. go-git caches its
+	// packfile index, so without a fresh PlainOpen recently-arrived
+	// objects appear as "object not found".
+	if err := s.refresh(); err != nil {
+		return "", fmt.Errorf("refresh repo: %w", err)
+	}
+
 	refName := plumbing.NewBranchReferenceName(ref)
 	parentRef, err := s.repo.Reference(refName, true)
 	if err != nil {
@@ -364,4 +373,16 @@ func withoutEntry(entries []object.TreeEntry, name string) []object.TreeEntry {
 func isBareRepo(path string) bool {
 	_, err := os.Stat(filepath.Join(path, "HEAD"))
 	return err == nil
+}
+
+// refresh re-opens the bare repository at s.path, replacing the cached
+// Repository handle. Used before write operations to defeat go-git's
+// packfile-index caching when out-of-band changes have happened on disk.
+func (s *Store) refresh() error {
+	repo, err := git.PlainOpen(s.path)
+	if err != nil {
+		return err
+	}
+	s.repo = repo
+	return nil
 }
