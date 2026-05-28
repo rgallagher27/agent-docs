@@ -129,6 +129,52 @@ func (s *Store) ListRefs() ([]Ref, error) {
 	return refs, nil
 }
 
+// MergeStatus reports whether a branch has been merged into trunk.
+type MergeStatus struct {
+	Merged    bool
+	BranchSHA string // 40-char tip SHA of the queried branch
+	TrunkSHA  string // 40-char tip SHA of trunk
+}
+
+// BranchMergeStatus reports whether ref's tip commit is contained in
+// trunkRef — i.e. the branch has been merged, its tip being an ancestor
+// of (or identical to) trunk's tip. Both refs are resolved as branch,
+// tag, or SHA; an unresolvable ref returns an error.
+//
+// Computed purely from commit ancestry in the bare clone — no external
+// state. Powers the "merged" preview banner (ADR-003). Note: on large
+// histories IsAncestor walks commits, so callers serving hot paths may
+// want to cache by (branch SHA, trunk SHA).
+func (s *Store) BranchMergeStatus(ref, trunkRef string) (MergeStatus, error) {
+	branchHash, err := s.resolveRef(ref)
+	if err != nil {
+		return MergeStatus{}, fmt.Errorf("resolve %s: %w", ref, err)
+	}
+	trunkHash, err := s.resolveRef(trunkRef)
+	if err != nil {
+		return MergeStatus{}, fmt.Errorf("resolve trunk %s: %w", trunkRef, err)
+	}
+	status := MergeStatus{BranchSHA: branchHash.String(), TrunkSHA: trunkHash.String()}
+	if branchHash == trunkHash {
+		status.Merged = true
+		return status, nil
+	}
+	branchCommit, err := s.repo.CommitObject(branchHash)
+	if err != nil {
+		return status, fmt.Errorf("branch commit %s: %w", branchHash, err)
+	}
+	trunkCommit, err := s.repo.CommitObject(trunkHash)
+	if err != nil {
+		return status, fmt.Errorf("trunk commit %s: %w", trunkHash, err)
+	}
+	merged, err := branchCommit.IsAncestor(trunkCommit)
+	if err != nil {
+		return status, fmt.Errorf("ancestry %s..%s: %w", ref, trunkRef, err)
+	}
+	status.Merged = merged
+	return status, nil
+}
+
 // ReadBlob returns the contents of path at ref. ref may be a branch
 // name, a tag name, or a commit SHA (full or abbreviated).
 func (s *Store) ReadBlob(ref, path string) ([]byte, error) {

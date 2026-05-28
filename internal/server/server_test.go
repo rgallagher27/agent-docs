@@ -93,6 +93,23 @@ func makeRemoteWithDocs(t *testing.T) string {
 		"commit", "-m", "feat/slashy: distinct index + note")
 	run(workDir, "git", "push", "origin", "feat/slashy")
 
+	// Merged branch: adds a doc, then merges into main. Its tip becomes
+	// an ancestor of main, so URLs on it should render the merged banner.
+	run(workDir, "git", "checkout", "main")
+	run(workDir, "git", "checkout", "-b", "feat-merged")
+	if err := os.WriteFile(filepath.Join(workDir, "reviews/done.html"),
+		[]byte("<html><body><h1>done</h1></body></html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(workDir, "git", "add", "reviews/done.html")
+	run(workDir, "git",
+		"-c", "user.name=T", "-c", "user.email=t@t",
+		"commit", "-m", "feat-merged: add done review")
+	run(workDir, "git", "push", "origin", "feat-merged")
+	run(workDir, "git", "checkout", "main")
+	run(workDir, "git", "merge", "--no-ff", "-m", "merge feat-merged", "feat-merged")
+	run(workDir, "git", "push", "origin", "main")
+
 	return remoteDir
 }
 
@@ -512,3 +529,112 @@ func TestContentType(t *testing.T) {
 	}
 }
 
+func TestHandler_MergedBranch_InjectsBanner(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	res, body := get(t, h, "/p/demo/feat-merged/reviews/done.html")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", res.StatusCode)
+	}
+	// Original doc content is still present (served verbatim apart from
+	// the injected banner).
+	if !strings.Contains(body, "<h1>done</h1>") {
+		t.Errorf("body missing original doc content: %q", body)
+	}
+	if !strings.Contains(body, "Merged") {
+		t.Errorf("body missing merged banner: %q", body)
+	}
+	// Banner links to the clean trunk URL for the same doc.
+	if !strings.Contains(body, `href="/p/demo/reviews/done.html"`) {
+		t.Errorf("banner missing trunk link: %q", body)
+	}
+	// Banner is injected after <body>, before the doc's own content.
+	if strings.Index(body, "Merged") > strings.Index(body, "<h1>done</h1>") {
+		t.Errorf("banner should precede doc content")
+	}
+}
+
+func TestHandler_LiveBranch_NoBanner(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	// feat-x diverges from main and is not merged — must be byte-for-byte
+	// verbatim, no banner.
+	res, body := get(t, h, "/p/demo/feat-x/plans/foo.html")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", res.StatusCode)
+	}
+	if body != "<html>plan foo on feat-x</html>" {
+		t.Errorf("live branch doc not served verbatim: %q", body)
+	}
+}
+
+func TestHandler_TrunkDoc_NoBanner(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	// The merged doc, viewed via the clean trunk URL, gets no banner.
+	res, body := get(t, h, "/p/demo/reviews/done.html")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", res.StatusCode)
+	}
+	if strings.Contains(body, "Merged") {
+		t.Errorf("trunk doc should not carry a merged banner: %q", body)
+	}
+}
+
+func TestHandler_MergedBranch_AutoIndexBanner(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	// An auto-generated section index on a merged branch carries the
+	// banner too (reviews/ has no committed index.html on the branch).
+	res, body := get(t, h, "/p/demo/feat-merged/reviews/")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", res.StatusCode)
+	}
+	if !strings.Contains(body, "Merged") {
+		t.Errorf("auto-index missing merged banner: %q", body)
+	}
+	if !strings.Contains(body, `href="/p/demo/reviews/"`) {
+		t.Errorf("auto-index banner missing trunk dir link: %q", body)
+	}
+}
+
+func TestInjectBanner(t *testing.T) {
+	tests := []struct {
+		name string
+		doc  string
+		want string
+	}{
+		{
+			"after lowercase body",
+			"<html><body><p>x</p></body></html>",
+			"<html><body>BANNER<p>x</p></body></html>",
+		},
+		{
+			"after body with attributes",
+			`<html><body class="y"><p>x</p></body></html>`,
+			`<html><body class="y">BANNER<p>x</p></body></html>`,
+		},
+		{
+			"uppercase BODY tag",
+			"<HTML><BODY><p>x</p></BODY></HTML>",
+			"<HTML><BODY>BANNER<p>x</p></BODY></HTML>",
+		},
+		{
+			"no body tag prepends",
+			"<p>fragment</p>",
+			"BANNER<p>fragment</p>",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := string(injectBanner([]byte(tt.doc), "BANNER"))
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

@@ -4,8 +4,10 @@
 package server
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
 	"sync"
@@ -82,6 +84,12 @@ func (s *Server) handleDoc(w http.ResponseWriter, r *http.Request) {
 	if content, err := entry.store.ReadBlob(ref, path); err == nil {
 		w.Header().Set("Content-Type", contentType(path))
 		w.Header().Set("Cache-Control", "no-cache")
+		if strings.HasSuffix(path, ".html") {
+			trunkHref := "/p/" + entry.cfg.Slug + "/" + path
+			if banner := s.mergedBanner(entry, ref, trunkHref); banner != "" {
+				content = injectBanner(content, string(banner))
+			}
+		}
 		_, _ = w.Write(content)
 		return
 	}
@@ -116,6 +124,11 @@ func (s *Server) tryAutoIndex(w http.ResponseWriter, r *http.Request, entry *pro
 	}
 
 	page := buildIndexPage(entry.cfg.Slug, ref, entry.cfg.TrunkRef, rest, dir, entries)
+	trunkHref := "/p/" + entry.cfg.Slug + "/"
+	if dir != "" {
+		trunkHref += dir + "/"
+	}
+	page.Banner = s.mergedBanner(entry, ref, trunkHref)
 	body, err := render.RenderIndex(page)
 	if err != nil {
 		http.Error(w, "render index: "+err.Error(), http.StatusInternalServerError)
@@ -235,6 +248,71 @@ func (s *Server) lookupProject(slug string) *projectEntry {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.projects[slug]
+}
+
+// mergedBanner returns the merged-branch lifecycle banner (ADR-003) for
+// a request on ref, or "" when no banner applies. It applies only when
+// ref is an explicit non-trunk branch whose tip is contained in trunk;
+// trunk URLs, tags, and SHA permalinks never get a banner. trunkHref is
+// the clean trunk URL the "view current version" link should point at.
+func (s *Server) mergedBanner(entry *projectEntry, ref, trunkHref string) template.HTML {
+	if ref == entry.cfg.TrunkRef {
+		return ""
+	}
+	if !isBranchRef(entry.store, ref) {
+		// Tag or SHA permalink — a permalink is pinned on purpose, so no
+		// "this was merged" chrome.
+		return ""
+	}
+	status, err := entry.store.BranchMergeStatus(ref, entry.cfg.TrunkRef)
+	if err != nil || !status.Merged {
+		return ""
+	}
+	return render.MergedBanner(entry.cfg.TrunkRef, trunkHref, shortSHA(status.BranchSHA))
+}
+
+// isBranchRef reports whether ref names a branch (not a tag) in store.
+func isBranchRef(store *gitstore.Store, ref string) bool {
+	refs, err := store.ListRefs()
+	if err != nil {
+		return false
+	}
+	for _, r := range refs {
+		if r.Name == ref && r.Kind == gitstore.RefBranch {
+			return true
+		}
+	}
+	return false
+}
+
+func shortSHA(sha string) string {
+	if len(sha) > 7 {
+		return sha[:7]
+	}
+	return sha
+}
+
+// injectBanner splices banner HTML in immediately after the opening
+// <body> tag of doc (case-insensitive). With no <body>, the banner is
+// prepended. This is the one deliberate exception to verbatim doc
+// serving (ADR-002): lifecycle chrome is overlaid without a full render
+// pass, and only for merged branches.
+func injectBanner(doc []byte, banner string) []byte {
+	lower := bytes.ToLower(doc)
+	bodyIdx := bytes.Index(lower, []byte("<body"))
+	if bodyIdx == -1 {
+		return append([]byte(banner), doc...)
+	}
+	gt := bytes.IndexByte(doc[bodyIdx:], '>')
+	if gt == -1 {
+		return append([]byte(banner), doc...)
+	}
+	at := bodyIdx + gt + 1
+	out := make([]byte, 0, len(doc)+len(banner))
+	out = append(out, doc[:at]...)
+	out = append(out, banner...)
+	out = append(out, doc[at:]...)
+	return out
 }
 
 // resolveRefAndPath splits rest into a (ref, doc-path) pair. If rest is

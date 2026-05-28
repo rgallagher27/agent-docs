@@ -139,6 +139,16 @@
 
 <p>Accepted 2026-05-28. Operational details (webhook setup, snapshot retention, local-mode flags) are deferred to MVP implementation and will produce follow-up ADRs as those decisions land.</p>
 
+<div class="panel-note">
+  <strong>Implementation status (2026-05-28):</strong>
+  <ul style="margin: 8px 0 0;">
+    <li><strong>URL shape, trunk alias, slash-named branches, SHA permalinks</strong> — live. Longest-prefix ref resolution handles <code>feat/foo</code> without the <code>refs/heads/</code> sentinel in the common case.</li>
+    <li><strong>"Merged into trunk" banner</strong> — live. Computed statelessly from commit ancestry (the branch tip is contained in trunk's tip). A self-contained inline-styled banner is spliced in just after <code>&lt;body&gt;</code> on merged non-trunk branch URLs and on their auto-generated section indexes; it links forward to the clean trunk URL. Trunk URLs, tags, SHA permalinks, and live (unmerged) previews are served byte-for-byte verbatim — the banner is the one deliberate exception to ADR-002's no-render rule.</li>
+    <li><strong>"Deleted unmerged" banner + snapshot retention</strong> — <span class="badge badge-info">deferred</span> Needs the server to detect a ref that vanished from the remote (today <code>Fetch</code> does not prune, so deleted branches linger as live) and to remember the last SHA. That is the Q13 snapshot-retention design; the deleted-branch banner lands with it.</li>
+    <li><strong>Doc-level forward aliasing</strong> — partial. The merged banner links to the same path on trunk; it assumes the post-merge path is unchanged. Rename-aware aliasing is future work.</li>
+  </ul>
+</div>
+
 <footer class="doc-foot">
   <div>Native doc — no markdown source.</div>
   <div><a href="index.html">↑ Decisions</a> · <a href="../index.html">agent-docs Docs</a></div>

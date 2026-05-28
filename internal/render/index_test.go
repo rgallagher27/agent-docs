@@ -108,3 +108,26 @@ func lineContaining(s, needle string) string {
 	}
 	return ""
 }
+
+func TestMergedBanner(t *testing.T) {
+	got := string(MergedBanner("main", "/p/demo/reviews/done.html", "abc1234"))
+
+	for _, want := range []string{
+		"Merged",
+		"abc1234",
+		"main",
+		`href="/p/demo/reviews/done.html"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("banner missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestMergedBanner_EscapesInputs(t *testing.T) {
+	// A hostile ref name must not break out of the markup.
+	got := string(MergedBanner(`x"><script>alert(1)</script>`, "/p/demo/", "deadbee"))
+	if strings.Contains(got, "<script>") {
+		t.Errorf("script tag not escaped:\n%s", got)
+	}
+}

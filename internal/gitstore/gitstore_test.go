@@ -379,3 +379,112 @@ func TestFetch_PicksUpRemoteChanges(t *testing.T) {
 		t.Errorf("got %q, want %q", got, "hi\n")
 	}
 }
+
+// makeRemoteWithBranches builds a bare remote on main, then adds:
+//   - feat-merged: a doc committed on a branch that is then merged into
+//     main (so its tip is an ancestor of main's tip)
+//   - feat-open:   a doc committed on a branch left diverged from main
+//
+// It returns the remote path.
+func makeRemoteWithBranches(t *testing.T) string {
+	t.Helper()
+	remoteDir := filepath.Join(t.TempDir(), "remote.git")
+	workDir := filepath.Join(t.TempDir(), "work")
+
+	run := func(dir, name string, args ...string) {
+		t.Helper()
+		cmd := exec.Command(name, args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("%s %v: %v\n%s", name, args, err, out)
+		}
+	}
+	commit := func(dir, msg string) {
+		run(dir, "git", "-c", "user.name=T", "-c", "user.email=t@t", "commit", "-m", msg)
+	}
+
+	if err := os.MkdirAll(remoteDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run("", "git", "init", "--bare", "--initial-branch=main", remoteDir)
+
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run(workDir, "git", "init", "--initial-branch=main")
+	run(workDir, "git", "remote", "add", "origin", remoteDir)
+	if err := os.WriteFile(filepath.Join(workDir, "index.html"), []byte("<html>root</html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(workDir, "git", "add", "index.html")
+	commit(workDir, "initial")
+	run(workDir, "git", "push", "origin", "main")
+
+	// Merged branch: branch, add a doc, merge back into main, push both.
+	run(workDir, "git", "checkout", "-b", "feat-merged")
+	if err := os.WriteFile(filepath.Join(workDir, "merged.html"), []byte("<html>merged</html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(workDir, "git", "add", "merged.html")
+	commit(workDir, "feat-merged: add merged doc")
+	run(workDir, "git", "push", "origin", "feat-merged")
+	run(workDir, "git", "checkout", "main")
+	run(workDir, "git", "merge", "--no-ff", "-m", "merge feat-merged", "feat-merged")
+	run(workDir, "git", "push", "origin", "main")
+
+	// Open branch: diverges from main and is never merged.
+	run(workDir, "git", "checkout", "-b", "feat-open")
+	if err := os.WriteFile(filepath.Join(workDir, "open.html"), []byte("<html>open</html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(workDir, "git", "add", "open.html")
+	commit(workDir, "feat-open: add open doc")
+	run(workDir, "git", "push", "origin", "feat-open")
+
+	return remoteDir
+}
+
+func TestBranchMergeStatus(t *testing.T) {
+	remote := makeRemoteWithBranches(t)
+	clonePath := filepath.Join(t.TempDir(), "clone.git")
+	s, err := Open(remote, clonePath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		ref  string
+		want bool
+	}{
+		{"merged branch is contained in trunk", "feat-merged", true},
+		{"open branch is not merged", "feat-open", false},
+		{"trunk is trivially merged into itself", "main", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status, err := s.BranchMergeStatus(tt.ref, "main")
+			if err != nil {
+				t.Fatalf("BranchMergeStatus: %v", err)
+			}
+			if status.Merged != tt.want {
+				t.Errorf("Merged = %v, want %v", status.Merged, tt.want)
+			}
+			if len(status.BranchSHA) != 40 {
+				t.Errorf("BranchSHA = %q, want 40-char SHA", status.BranchSHA)
+			}
+		})
+	}
+}
+
+func TestBranchMergeStatus_UnknownRef(t *testing.T) {
+	remote := makeRemoteWithBranches(t)
+	clonePath := filepath.Join(t.TempDir(), "clone.git")
+	s, err := Open(remote, clonePath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if _, err := s.BranchMergeStatus("does-not-exist", "main"); err == nil {
+		t.Fatal("expected error for unknown ref")
+	}
+}

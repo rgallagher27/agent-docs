@@ -21,6 +21,9 @@ type IndexPage struct {
 	RefLabel string
 	// Entries are the items to list in the card grid.
 	Entries []Entry
+	// Banner, if set, is raw HTML inserted at the very top of <body>
+	// (e.g. a "merged" lifecycle banner). Trusted server-composed markup.
+	Banner template.HTML
 }
 
 // Crumb is one breadcrumb segment. Empty Href marks the current item.
@@ -46,6 +49,41 @@ func RenderIndex(p IndexPage) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
+
+// MergedBanner returns the lifecycle banner shown on a merged branch's
+// URLs (ADR-003). trunkRef is the trunk branch name, trunkHref the clean
+// trunk URL for the current doc or directory, shortSHA the branch tip's
+// abbreviated SHA. The result is self-contained inline-styled HTML with
+// no JS, safe to splice verbatim into an LLM-authored doc just after its
+// <body> tag. Inputs are escaped via the template.
+func MergedBanner(trunkRef, trunkHref, shortSHA string) template.HTML {
+	var buf bytes.Buffer
+	// Static template, string inputs — Execute cannot fail here.
+	_ = bannerTmpl.Execute(&buf, struct{ TrunkRef, TrunkHref, SHA string }{
+		TrunkRef:  trunkRef,
+		TrunkHref: trunkHref,
+		SHA:       shortSHA,
+	})
+	return template.HTML(buf.String())
+}
+
+// bannerTmpl renders the merged-branch banner. Styles are inlined (the
+// banner is injected into arbitrary docs that don't share our CSS) and
+// mirror the palette in indexCSS.
+var bannerTmpl = template.Must(template.New("banner").Parse(
+	`<div style="position:sticky;top:0;z-index:9999;background:#232b36;` +
+		`border-bottom:1px solid #2d3744;color:#cfd6df;padding:10px 16px;text-align:center;` +
+		`font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">` +
+		`<span style="display:inline-block;background:rgba(16,185,129,0.15);color:#10b981;` +
+		`font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;` +
+		`padding:2px 8px;border-radius:10px;margin-right:8px;">Merged</span>` +
+		`This branch (tip <code style="background:#0a0e13;padding:2px 6px;border-radius:4px;` +
+		`color:#f0d090;font-family:'SF Mono',Menlo,Consolas,monospace;">{{.SHA}}</code>) ` +
+		`was merged into <code style="background:#0a0e13;padding:2px 6px;border-radius:4px;` +
+		`color:#f0d090;font-family:'SF Mono',Menlo,Consolas,monospace;">{{.TrunkRef}}</code> ` +
+		`— viewing an archived preview. ` +
+		`<a href="{{.TrunkHref}}" style="color:#60a5fa;">View current version on {{.TrunkRef}} &rarr;</a>` +
+		`</div>`))
 
 // indexCSS is the shared inline CSS for auto-generated chrome. Mirrors
 // the style template's palette and typography so generated pages don't
@@ -91,6 +129,7 @@ var indexTmpl = template.Must(template.New("index").Parse(`<!DOCTYPE html>
 <style>` + indexCSS + `</style>
 </head>
 <body>
+{{ .Banner }}
 <div class="wrap">
 
 <nav class="breadcrumbs">
