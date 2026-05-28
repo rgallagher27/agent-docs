@@ -238,42 +238,56 @@ func (s *Server) lookupProject(slug string) *projectEntry {
 }
 
 // resolveRefAndPath splits rest into a (ref, doc-path) pair. If rest is
-// empty, defaults to the project's trunk ref and index.html. If the
-// first segment of rest matches a known ref in the bare clone, treat as
-// explicit; otherwise rest is trunk-relative.
+// empty, defaults to the project's trunk ref and index.html. Otherwise
+// the longest "/"-bounded prefix of rest that matches a known ref wins;
+// anything left after that prefix is the doc path. If no prefix matches,
+// rest is treated as trunk-relative.
+//
+// This handles slash-containing branch names like "feat/mvp-validation"
+// without requiring the refs/heads/ sentinel from ADR-003 in the
+// common case. Branches whose names collide with real trunk-relative
+// doc paths still need the sentinel — open follow-up.
 func resolveRefAndPath(entry *projectEntry, rest string) (string, string, error) {
 	if rest == "" {
 		return entry.cfg.TrunkRef, "index.html", nil
 	}
 
-	first, remainder, _ := strings.Cut(rest, "/")
-	if isKnownRef(entry.store, first) {
-		path := remainder
+	if ref, path, ok := longestRefPrefix(entry.store, rest); ok {
 		if path == "" {
 			path = "index.html"
 		}
-		return first, path, nil
+		return ref, path, nil
 	}
 	return entry.cfg.TrunkRef, rest, nil
 }
 
-// isKnownRef returns true if name resolves to a branch or tag in the
-// store. SHA-prefix permalinks (per ADR-003) are not yet supported and
-// will fall through to trunk-relative interpretation — Q11 follow-up.
-func isKnownRef(store *gitstore.Store, name string) bool {
-	if name == "" {
-		return false
-	}
+// longestRefPrefix returns the longest "/"-bounded prefix of rest that
+// matches a ref name in the store, plus the remainder path with any
+// leading "/" stripped. ok=false if no prefix matches or refs can't be
+// listed.
+func longestRefPrefix(store *gitstore.Store, rest string) (ref, path string, ok bool) {
 	refs, err := store.ListRefs()
 	if err != nil {
-		return false
+		return "", "", false
 	}
+	names := make(map[string]struct{}, len(refs))
 	for _, r := range refs {
-		if r.Name == name {
-			return true
-		}
+		names[r.Name] = struct{}{}
 	}
-	return false
+
+	candidate := strings.TrimSuffix(rest, "/")
+	for candidate != "" {
+		if _, hit := names[candidate]; hit {
+			remainder := strings.TrimPrefix(rest[len(candidate):], "/")
+			return candidate, remainder, true
+		}
+		i := strings.LastIndex(candidate, "/")
+		if i < 0 {
+			return "", "", false
+		}
+		candidate = candidate[:i]
+	}
+	return "", "", false
 }
 
 // contentType returns the MIME type for path's extension. MVP knows

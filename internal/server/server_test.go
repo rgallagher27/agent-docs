@@ -74,6 +74,25 @@ func makeRemoteWithDocs(t *testing.T) string {
 		"commit", "-m", "feat-x change")
 	run(workDir, "git", "push", "origin", "feat-x")
 
+	// Slash-named branch to exercise longest-prefix ref resolution.
+	// Distinct index.html + an extra file so tests can prove the resolver
+	// picked this ref and not trunk.
+	run(workDir, "git", "checkout", "main")
+	run(workDir, "git", "checkout", "-b", "feat/slashy")
+	if err := os.WriteFile(filepath.Join(workDir, "index.html"),
+		[]byte("<html>slashy root</html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workDir, "note.html"),
+		[]byte("<html>slashy content</html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(workDir, "git", "add", "index.html", "note.html")
+	run(workDir, "git",
+		"-c", "user.name=T", "-c", "user.email=t@t",
+		"commit", "-m", "feat/slashy: distinct index + note")
+	run(workDir, "git", "push", "origin", "feat/slashy")
+
 	return remoteDir
 }
 
@@ -276,8 +295,12 @@ func TestResolveRefAndPath(t *testing.T) {
 		{"explicit main + nested", "main/plans/foo.html", "main", "plans/foo.html"},
 		{"explicit main + root", "main/", "main", "index.html"},
 		{"explicit feat-x", "feat-x/plans/foo.html", "feat-x", "plans/foo.html"},
+		{"slash-named branch + path", "feat/slashy/note.html", "feat/slashy", "note.html"},
+		{"slash-named branch root w/ slash", "feat/slashy/", "feat/slashy", "index.html"},
+		{"slash-named branch bare", "feat/slashy", "feat/slashy", "index.html"},
 		{"unknown first segment falls through", "weird/path.html", "main", "weird/path.html"},
 		{"trunk-relative nested", "plans/foo.html", "main", "plans/foo.html"},
+		{"prefix that overshoots branch name", "feat/slashy-other/foo.html", "main", "feat/slashy-other/foo.html"},
 	}
 
 	for _, tt := range tests {
@@ -290,6 +313,38 @@ func TestResolveRefAndPath(t *testing.T) {
 				t.Errorf("got (%q, %q), want (%q, %q)", gotRef, gotPath, tt.wantRef, tt.wantPath)
 			}
 		})
+	}
+}
+
+func TestHandler_SlashNamedBranch_ServesDoc(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	res, body := get(t, h, "/p/demo/feat/slashy/note.html")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200\nbody=%s", res.StatusCode, body)
+	}
+	if !strings.Contains(body, "slashy content") {
+		t.Errorf("body = %q, want slashy content", body)
+	}
+}
+
+func TestHandler_SlashNamedBranch_RootIndex(t *testing.T) {
+	srv, _ := setupServer(t)
+	h := srv.Handler()
+
+	// /p/demo/feat/slashy/ serves feat/slashy's committed index.html,
+	// which has distinct content from trunk's index.html — proving the
+	// resolver picked the slash-named branch and not trunk.
+	res, body := get(t, h, "/p/demo/feat/slashy/")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", res.StatusCode)
+	}
+	if !strings.Contains(body, "slashy root") {
+		t.Errorf("body = %q, want feat/slashy's root index", body)
+	}
+	if strings.Contains(body, ">root</html>") {
+		t.Errorf("served trunk's index.html, not feat/slashy's: %q", body)
 	}
 }
 
