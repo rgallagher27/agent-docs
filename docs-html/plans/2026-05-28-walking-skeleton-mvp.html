@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Walking-skeleton MVP — agent-docs</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6;
+    --muted: #9aa5b1; --accent: #f59e0b; --accent-2: #60a5fa; --accent-3: #a78bfa;
+    --good: #10b981; --warn: #f59e0b; --bad: #ef4444; --border: #2d3744; --code-bg: #0a0e13;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 32px 96px; }
+  .breadcrumbs { font-size: 13px; color: var(--muted); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .breadcrumbs a { color: var(--accent-2); text-decoration: none; }
+  .breadcrumbs a:hover { text-decoration: underline; }
+  .breadcrumbs .sep { color: var(--border); margin: 0 8px; }
+  header.doc-head { padding: 24px 0 28px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.02em; line-height: 1.2; }
+  h2 { margin: 44px 0 14px; font-size: 22px; letter-spacing: -0.01em; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { margin: 28px 0 10px; font-size: 17px; color: var(--accent-2); }
+  p, ul, ol { margin: 0 0 12px; }
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent-2); }
+  code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #f0d090; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 10px 0 16px; position: relative; }
+  pre code { background: transparent; padding: 0; color: var(--text); font-size: 13px; }
+  pre[data-lang]::before { content: attr(data-lang); position: absolute; top: 6px; right: 10px; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  tr:hover td { background: var(--panel); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .lead { color: #cfd6df; font-size: 16px; margin: 0; }
+  .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge-good { background: rgba(16,185,129,0.15); color: var(--good); }
+  .badge-warn { background: rgba(245,158,11,0.18); color: var(--warn); }
+  .badge-bad  { background: rgba(239,68,68,0.15); color: var(--bad); }
+  .badge-info { background: rgba(96,165,250,0.15); color: var(--accent-2); }
+  .badge-muted { background: var(--panel-2); color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 14px 0; }
+  .panel-note { background: rgba(96,165,250,0.06); border-left: 3px solid var(--accent-2); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-warn { background: rgba(245,158,11,0.06); border-left: 3px solid var(--warn); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .stat { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; margin-right: 10px; margin-bottom: 8px; font-size: 13px; }
+  .stat strong { color: var(--accent); font-size: 16px; display: block; }
+  footer.doc-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  footer.doc-foot a { color: var(--accent-2); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="breadcrumbs">
+  <a href="../index.html">agent-docs Docs</a>
+  <span class="sep">›</span>
+  <a href="index.html">Plans</a>
+  <span class="sep">›</span>
+  <span>Walking-skeleton MVP</span>
+</nav>
+
+<header class="doc-head">
+  <h1>Walking-skeleton MVP</h1>
+  <div class="meta" style="margin-bottom: 14px;">
+    <span class="tag">plan</span>
+    <span class="tag">mvp</span>
+    <span class="tag">2026-05-28</span>
+    <span class="badge badge-warn">In progress</span>
+  </div>
+  <p class="lead">Prove the end-to-end loop. One project, one branch, one MCP client (Claude Code), one HTML doc created via MCP, pushed to git, served at a branch-scoped URL, edited, merged, URL still resolves.</p>
+</header>
+
+<div>
+  <div class="stat"><strong>2 / 9</strong> steps complete</div>
+  <div class="stat"><strong>Scaffolded</strong> phase</div>
+  <div class="stat"><strong>ADRs 001-003</strong> locked</div>
+  <div class="stat"><strong>Single user</strong> mode for MVP</div>
+</div>
+
+<h2>Scope</h2>
+
+<h3>In scope</h3>
+
+<ul>
+  <li>Single Go binary <code>agent-docs</code> that serves both HTTP and an MCP server (stdio).</li>
+  <li>One project registered via a config file.</li>
+  <li>Bare-clone storage per project (in <code>~/.agent-docs/clones/</code>).</li>
+  <li>Three MCP tools: <code>write_doc</code>, <code>read_doc</code>, <code>list_docs</code>.</li>
+  <li>HTTP routes: <code>/p/{proj}/{ref}/...</code> serving HTML from the bare clone; <code>/p/{proj}/...</code> aliasing to trunk.</li>
+  <li>Section-index auto-generation (when <code>{section}/index.html</code> isn't committed).</li>
+  <li>Claude Code MCP wiring (config snippet + README instructions).</li>
+  <li>End-to-end validation: create doc → push → fetch via URL → edit → merge → trunk URL serves merged content.</li>
+</ul>
+
+<h3>Out of scope (for MVP)</h3>
+
+<ul>
+  <li>Authentication / multi-user. Single-user, loopback only.</li>
+  <li>Cross-project web UI / dashboard.</li>
+  <li>Search.</li>
+  <li>Branch lifecycle banners ("merged", "deleted").</li>
+  <li>Forward-aliasing of merged branch URLs.</li>
+  <li>Snapshot retention / GC.</li>
+  <li><code>agent-docs render</code> CLI.</li>
+  <li>Second MCP client (Codex / OpenCode).</li>
+  <li>Webhook ingestion — manual <code>agent-docs fetch</code> trigger for now.</li>
+</ul>
+
+<p>The bar is "Claude Code writes a doc, it lands in git, I can open it at a branch URL". Everything else waits.</p>
+
+<h2>Approach</h2>
+
+<p>Thin vertical slice through the full stack, then widen. Each step crosses every layer so the loop is end-to-end as early as possible — preferring "works for one case" over "complete for the typical case" at every choice.</p>
+
+<p>Package layout:</p>
+
+<pre data-lang="text"><code>cmd/agent-docs/
+  main.go              entry point; subcommands: serve, fetch, version
+internal/
+  config/              load config.toml; projects list
+  gitstore/            bare-clone wrapper around go-git
+  server/              HTTP handlers; route /p/{proj}/{ref}/...
+  mcp/                 stdio MCP server; write_doc / read_doc / list_docs
+  render/              section-index generator (no doc rendering)
+go.mod, go.sum</code></pre>
+
+<h2>Tracker</h2>
+
+<p style="margin-bottom: 4px;"><span class="badge badge-warn">In progress</span> — 2 of 9 steps complete. Last updated 2026-05-28.</p>
+
+<table>
+  <thead>
+    <tr><th style="width: 40px;">#</th><th>Step</th><th style="width: 130px;">Status</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td><strong>Plan written</strong> — this document, scoped against ADRs 001-003.</td>
+      <td><span class="badge badge-good">Done</span></td>
+      <td>Updated in place as steps land. Decisions during implementation logged in §Decisions below.</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td><strong>Go module scaffold</strong> — <code>go.mod</code>, <code>cmd/agent-docs/main.go</code> with <code>serve</code>, <code>fetch</code>, <code>version</code> subcommands wired via stdlib <code>flag</code>.</td>
+      <td><span class="badge badge-good">Done</span></td>
+      <td>Module path <code>github.com/rgallagher/agent-docs</code> (provisional, rename via <code>go mod edit</code> if needed). Subcommand router in <code>cmd/agent-docs/main.go</code>. Table-driven test in <code>main_test.go</code>. <code>go vet</code> / <code>go build</code> / <code>go test</code> all clean. <code>./agent-docs version</code> prints <code>dev</code>; unknown subcommands exit 1.</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><strong>Config loading</strong> — single config file (TOML or JSON, decide on first commit) at <code>~/.agent-docs/config.toml</code>. Projects list: slug, remote URL, bare-clone path, trunk ref.</td>
+      <td><span class="badge badge-muted">Not started</span></td>
+      <td>Lean toward TOML (BurntSushi/toml — single small dep) for readability. Confirm on commit.</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><strong>Gitstore</strong> — wrap <code>go-git</code>. Functions: <code>Init(remote, path)</code>, <code>Fetch()</code>, <code>ListRefs()</code>, <code>ReadBlob(ref, path)</code>, <code>Commit(ref, path, content, msg, author)</code>, <code>Push(ref)</code>. Table-driven tests against a local <code>git init --bare</code>.</td>
+      <td><span class="badge badge-muted">Not started</span></td>
+      <td>Bare clones only — no working trees. In-memory tree manipulation for writes.</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><strong>HTTP server</strong> — stdlib <code>net/http</code>. Routes: <code>GET /p/{proj}/{ref}/{path...}</code> serves HTML blob; <code>GET /p/{proj}/{path...}</code> resolves via trunk ref. Basic 404 / 500.</td>
+      <td><span class="badge badge-muted">Not started</span></td>
+      <td>No chrome / web UI yet — serve doc bytes as-is.</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><strong>Section-index generator</strong> — when a request resolves to a directory or to <code>{section}/index.html</code> that isn't committed, generate a card-grid index from the directory listing. Inline-CSS HTML matching the style template.</td>
+      <td><span class="badge badge-muted">Not started</span></td>
+      <td>Use stdlib <code>html/template</code>. Generator is the only thing in <code>internal/render</code>.</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><strong>MCP server</strong> — stdio transport. Tools: <code>write_doc(project, ref, path, content)</code>, <code>read_doc(project, ref, path)</code>, <code>list_docs(project, ref, section?)</code>. Writes flow through gitstore.</td>
+      <td><span class="badge badge-muted">Not started</span></td>
+      <td>Use the official MCP Go SDK if it covers stdio cleanly; otherwise hand-roll over stdio JSON-RPC (protocol is small).</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><strong>Claude Code wiring</strong> — produce a snippet for the Claude Code MCP config plus a README section showing the end-to-end loop.</td>
+      <td><span class="badge badge-muted">Not started</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td><strong>End-to-end validation</strong> — full run-through documented in <code>reviews/YYYY-MM-DD-mvp-validation.html</code>. Create doc on a branch via MCP, push via gitstore, open URL, edit, merge to trunk, verify trunk URL.</td>
+      <td><span class="badge badge-muted">Not started</span></td>
+      <td>If this passes, MVP scope is complete and the next plan is feature broadening.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Validation criteria</h2>
+
+<p>MVP is "done" when, from a clean machine:</p>
+
+<ol>
+  <li>Install <code>agent-docs</code>, run <code>agent-docs serve</code>.</li>
+  <li>Configure a project pointing at a test git remote.</li>
+  <li>From Claude Code, invoke <code>write_doc</code> on branch <code>feat/test-doc</code> to create <code>plans/2026-05-29-hello.html</code>.</li>
+  <li>The file appears in the project repo on branch <code>feat/test-doc</code>, committed and pushed.</li>
+  <li>Visit <code>http://localhost:8080/p/{proj}/feat/test-doc/plans/2026-05-29-hello.html</code> — the doc loads.</li>
+  <li>Visit <code>http://localhost:8080/p/{proj}/feat/test-doc/plans/</code> — auto-generated section index lists the doc.</li>
+  <li>From Claude Code, invoke <code>write_doc</code> again with updated content — the URL now serves the new content.</li>
+  <li>Merge <code>feat/test-doc</code> into <code>main</code>. <code>http://localhost:8080/p/{proj}/plans/2026-05-29-hello.html</code> serves the doc on trunk.</li>
+</ol>
+
+<h2>Risks &amp; unknowns</h2>
+
+<table>
+  <thead>
+    <tr><th>Risk</th><th>Mitigation</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>MCP Go SDK churn or limited tool surface.</td>
+      <td>Be ready to hand-roll over stdio JSON-RPC. The MCP wire protocol is small enough.</td>
+    </tr>
+    <tr>
+      <td>go-git's commit + push performance on a bare clone.</td>
+      <td>Acceptable for MVP; revisit if &gt; 1 s per write. Could fall back to shelling out to <code>git</code> for hot paths if needed.</td>
+    </tr>
+    <tr>
+      <td>Path / branch-name disambiguation in URL parsing.</td>
+      <td>Use the <code>refs/heads/</code> sentinel from ADR-003 when needed. Keep the MVP project's branch names simple (no slashes) to defer.</td>
+    </tr>
+    <tr>
+      <td>Claude Code MCP config format may shift between releases.</td>
+      <td>Document for the current format; revisit if it changes. The README section is small to update.</td>
+    </tr>
+    <tr>
+      <td>Auth deferred — but the binary is bound to loopback. If a dev exposes it to a network accidentally, anyone reachable can write.</td>
+      <td>Bind to <code>127.0.0.1</code> only in MVP. Refuse to start with a non-loopback bind address unless an explicit <code>--unsafe-no-auth</code> flag is set. ADR for the auth model lands before any multi-user work.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Decisions made during implementation</h2>
+
+<table>
+  <thead>
+    <tr><th style="width: 90px;">Step</th><th>Decision</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Step 1</td>
+      <td>Module path is <code>github.com/rgallagher/agent-docs</code> for now. Rename later via <code>go mod edit -module …</code> + a tree-wide find/replace of imports if the canonical repo home turns out different.</td>
+    </tr>
+    <tr>
+      <td>Step 1</td>
+      <td>Stdlib-only — no <code>cobra</code>, no <code>urfave/cli</code>. <code>flag.NewFlagSet</code> per subcommand handles the three commands we need. Re-evaluate only if subcommand count balloons.</td>
+    </tr>
+    <tr>
+      <td>Step 1</td>
+      <td>Stub subcommands print their parsed flags to stdout then return a wrapped <code>errNotImplemented</code> referencing the tracker step. Exit code 1; tracker step number in the error message. Keeps the binary honest about its state.</td>
+    </tr>
+    <tr>
+      <td>Step 1</td>
+      <td><code>run()</code> extracted from <code>main()</code> and takes <code>(args, stdout, stderr)</code> so it's table-test-driveable without touching <code>os.Args</code> or process I/O.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="panel-note">
+  <strong>Next concrete action:</strong> step 2 — config loading. Decide TOML vs JSON on first commit (lean TOML, single small dep), define the <code>Project</code> struct (<code>slug</code>, <code>remote</code>, <code>clone_path</code>, <code>trunk_ref</code>), wire <code>--config</code> resolution in <code>cmdServe</code> and <code>cmdFetch</code>, and add table-driven tests for the loader against fixture files in <code>internal/config/testdata/</code>.
+</div>
+
+<footer class="doc-foot">
+  <div>Native doc — no markdown source.</div>
+  <div><a href="index.html">↑ Plans</a> · <a href="../index.html">agent-docs Docs</a></div>
+</footer>
+
+</div>
+</body>
+</html>

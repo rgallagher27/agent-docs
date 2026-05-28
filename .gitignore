@@ -1,0 +1,14 @@
+# Compiled binary
+/agent-docs
+
+# Go test / coverage output
+*.test
+*.out
+
+# Local config that shouldn't ship
+config.toml
+agent-docs.toml
+
+# Editor / OS detritus
+.DS_Store
+*.swp

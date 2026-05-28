@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ADR-002 — HTML-canonical, no source language — agent-docs</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6;
+    --muted: #9aa5b1; --accent: #f59e0b; --accent-2: #60a5fa; --accent-3: #a78bfa;
+    --good: #10b981; --warn: #f59e0b; --bad: #ef4444; --border: #2d3744; --code-bg: #0a0e13;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 32px 96px; }
+  .breadcrumbs { font-size: 13px; color: var(--muted); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .breadcrumbs a { color: var(--accent-2); text-decoration: none; }
+  .breadcrumbs a:hover { text-decoration: underline; }
+  .breadcrumbs .sep { color: var(--border); margin: 0 8px; }
+  header.doc-head { padding: 24px 0 28px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.02em; line-height: 1.2; }
+  h2 { margin: 44px 0 14px; font-size: 22px; letter-spacing: -0.01em; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { margin: 28px 0 10px; font-size: 17px; color: var(--accent-2); }
+  p, ul, ol { margin: 0 0 12px; }
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent-2); }
+  code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #f0d090; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .lead { color: #cfd6df; font-size: 16px; margin: 0; }
+  .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge-good { background: rgba(16,185,129,0.15); color: var(--good); }
+  .badge-info { background: rgba(96,165,250,0.15); color: var(--accent-2); }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 14px 0; }
+  .panel-note { background: rgba(96,165,250,0.06); border-left: 3px solid var(--accent-2); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-warn { background: rgba(245,158,11,0.06); border-left: 3px solid var(--warn); padding: 14px 18px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-warn h3 { margin-top: 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 0; border: none; }
+  .panel-warn h3:first-child { margin-top: 0; }
+  footer.doc-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  footer.doc-foot a { color: var(--accent-2); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="breadcrumbs">
+  <a href="../index.html">agent-docs Docs</a>
+  <span class="sep">›</span>
+  <a href="index.html">Decisions</a>
+  <span class="sep">›</span>
+  <span>ADR-002</span>
+</nav>
+
+<header class="doc-head">
+  <h1>ADR-002 — HTML-canonical, no source language</h1>
+  <div class="meta" style="margin-bottom: 14px;">
+    <span class="tag">adr</span>
+    <span class="tag">002</span>
+    <span class="tag">2026-05-28</span>
+    <span class="badge badge-good">Accepted</span>
+  </div>
+  <p class="lead">The committed file is fully self-contained HTML with inline CSS, authored by the LLM following the style template. The server stores and serves it verbatim — no render step for doc content. Metadata is derived from semantic HTML on ingest, not declared in frontmatter.</p>
+</header>
+
+<div class="panel-note">
+  <strong>Status:</strong> Accepted, 2026-05-28. Resolves Q2, Q3, Q15. Revises an earlier (rejected) "Markdown source + HTML render" direction that briefly appeared in architecture drafts.
+</div>
+
+<h2>Context</h2>
+
+<p>Given <a href="001-repo-canonical-source-of-truth.html">ADR-001</a> (docs live in git), what format is the committed file?</p>
+
+<p>The instinctive answer — and the one earlier architecture drafts assumed — was a Markdown source with YAML frontmatter, rendered to HTML by the server. This is the Hugo / Jekyll / Astro model and would have been familiar.</p>
+
+<p>The problem: <strong>the LLM does not produce Markdown-shaped output</strong>. A typical agent-docs page contains:</p>
+
+<ul>
+  <li>Inline SVG diagrams (see the system sketch in <a href="../architecture.html#sketch">architecture.html</a>).</li>
+  <li>Custom grid layouts (<code>.grid-2</code>, card decks).</li>
+  <li>In-page mockups, visual comparisons, side-by-side option tables with rich cell content.</li>
+  <li>Colored panels with semantic meaning (<code>.panel-good</code>, <code>.panel-warn</code>).</li>
+  <li>Status badges, tag chips, checklist-style trackers.</li>
+</ul>
+
+<p>Markdown can't express any of that without HTML escape hatches. Treating Markdown as the source means the LLM either writes degraded content or embeds raw HTML constantly — at which point "source" is no longer Markdown in any useful sense. The abstraction is lossy.</p>
+
+<h2>Decision</h2>
+
+<div class="panel">
+  <p style="margin: 0 0 12px;"><strong>HTML is canonical. There is no source language.</strong></p>
+  <ul style="margin: 0;">
+    <li>The committed file in <code>docs-html/</code> is fully self-contained HTML with inline CSS, authored by the LLM following <code>docs-html/_assets/STYLE_AND_TEMPLATE.md</code>.</li>
+    <li>The server stores and serves the file verbatim — no render step for doc content.</li>
+    <li>Server-side rendering is limited to <em>chrome</em>: search UI, ref selector, "merged" / "deleted" banners, and section-index pages that are auto-generated from directory listings if not committed.</li>
+    <li>Metadata (title, status, tags, doc type, typed cross-doc links) is <strong>derived</strong> from the doc's semantic HTML on ingest — <code>&lt;h1&gt;</code>, <code>.badge</code> classes, <code>.tag</code> chips, <code>data-link-type</code> attributes — and indexed in SQLite. It is not declared in a separate frontmatter block.</li>
+    <li>The LLM may invoke a <code>scaffold_doc(...)</code> MCP helper that returns a boilerplate-wrapped scaffold (CSS, breadcrumb, header, footer) for the LLM to fill in. This is a UX convenience, not a storage-format change — the resulting committed file is still full inline HTML.</li>
+  </ul>
+</div>
+
+<h2>Consequences</h2>
+
+<div class="panel-warn">
+  <h3 style="color: var(--good);">Wins</h3>
+  <ul>
+    <li>The LLM keeps full HTML expressive range — SVG, mockups, custom layouts, anything HTML allows.</li>
+    <li>No source-to-output divergence. The committed file <em>is</em> the doc.</li>
+    <li>Files open via <code>file://</code> with no infrastructure. Self-contained means self-contained.</li>
+    <li>Matches the existing working convention exactly — no migration friction.</li>
+    <li>The style template ships with the product and is meaningful to LLMs by itself. They can produce conforming docs without a custom renderer in the loop.</li>
+  </ul>
+
+  <h3 style="color: var(--bad);">Costs</h3>
+  <ul style="margin-bottom: 0;">
+    <li>Inline CSS repeats across every file (mitigated by <code>scaffold_doc</code>; rarely a real issue in practice).</li>
+    <li>Site-wide style updates require rewriting every doc — a rare event, but real. Tooling will be needed for fleet-wide template upgrades eventually.</li>
+    <li>Parsing HTML for metadata is more brittle than reading YAML frontmatter. The parser must be conservative — when in doubt, omit, never guess.</li>
+    <li>The style template (<code>STYLE_AND_TEMPLATE.md</code>) becomes load-bearing — it <em>is</em> the spec the LLM follows. Changes to it ripple across all future docs.</li>
+    <li>"Programmatic mutation" tools (e.g. an <code>update_plan_step</code> helper) become HTML-edit helpers, not structured-field updates. The LLM is expected to do the editing; MCP enforces conventions and commits.</li>
+  </ul>
+</div>
+
+<h2>Status &amp; revision</h2>
+
+<p>Accepted 2026-05-28. Builds on <a href="001-repo-canonical-source-of-truth.html">ADR-001</a>. <a href="003-branch-aware-urls-with-preview-lifecycle.html">ADR-003</a> builds on this (specifically: there is no render step to worry about across refs).</p>
+
+<footer class="doc-foot">
+  <div>Native doc — no markdown source.</div>
+  <div><a href="index.html">↑ Decisions</a> · <a href="../index.html">agent-docs Docs</a></div>
+</footer>
+
+</div>
+</body>
+</html>

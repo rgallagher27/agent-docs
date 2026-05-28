@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vision — agent-docs</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6;
+    --muted: #9aa5b1; --accent: #f59e0b; --accent-2: #60a5fa; --accent-3: #a78bfa;
+    --good: #10b981; --warn: #f59e0b; --bad: #ef4444; --border: #2d3744; --code-bg: #0a0e13;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 32px 96px; }
+  .breadcrumbs { font-size: 13px; color: var(--muted); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .breadcrumbs a { color: var(--accent-2); text-decoration: none; }
+  .breadcrumbs a:hover { text-decoration: underline; }
+  .breadcrumbs .sep { color: var(--border); margin: 0 8px; }
+  header.doc-head { padding: 24px 0 28px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.02em; line-height: 1.2; }
+  h2 { margin: 44px 0 14px; font-size: 22px; letter-spacing: -0.01em; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { margin: 28px 0 10px; font-size: 17px; color: var(--accent-2); }
+  p, ul, ol { margin: 0 0 12px; }
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent-2); }
+  a:hover { color: #93c5fd; }
+  code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #f0d090; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  tr:hover td { background: var(--panel); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .lead { color: #cfd6df; font-size: 16px; margin: 0; }
+  .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge-good { background: rgba(16,185,129,0.15); color: var(--good); }
+  .badge-warn { background: rgba(245,158,11,0.18); color: var(--warn); }
+  .badge-info { background: rgba(96,165,250,0.15); color: var(--accent-2); }
+  .badge-muted { background: var(--panel-2); color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 14px 0; }
+  .panel-note { background: rgba(96,165,250,0.06); border-left: 3px solid var(--accent-2); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-warn { background: rgba(245,158,11,0.06); border-left: 3px solid var(--warn); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  footer.doc-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  footer.doc-foot a { color: var(--accent-2); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="breadcrumbs">
+  <a href="index.html">agent-docs Docs</a>
+  <span class="sep">›</span>
+  <span>Vision</span>
+</nav>
+
+<header class="doc-head">
+  <h1>Vision</h1>
+  <div class="meta" style="margin-bottom: 14px;">
+    <span class="tag">vision</span>
+    <span class="tag">v0</span>
+    <span class="tag">2026-05-28</span>
+  </div>
+  <p class="lead">Why agent-docs, who it's for, and what it deliberately isn't. This is the north star; specifics live in <a href="architecture.html">architecture.html</a>.</p>
+</header>
+
+<h2>The problem</h2>
+
+<p>AI coding agents produce enormous amounts of useful intermediate work — implementation plans, design tradeoffs, decision rationale, code-review notes — and most of it evaporates as soon as the chat window scrolls. The good stuff doesn't survive to the next session, let alone to a teammate or to future-you trying to remember why a thing was built the way it was.</p>
+
+<p>Three concrete failure modes today:</p>
+
+<ul>
+  <li><strong>Lossy outputs.</strong> Plans live in transient chat or scratch files. ADR-worthy decisions get made and forgotten. Reviews scroll off the screen.</li>
+  <li><strong>No shared convention.</strong> Every team (and every harness) reinvents the doc layout. Claude Code's plans don't compose with Codex's plans don't compose with whatever a teammate did in OpenCode last Tuesday.</li>
+  <li><strong>Generic doc tools are agent-blind.</strong> Notion, Confluence, Outline are fine page-stores but have no typed concept of "this is a plan tracker, mark step 3 done" or "this is ADR-014, here are the consequences". An LLM writing into them is back to free-form prose.</li>
+</ul>
+
+<p>Meanwhile, the pattern that <em>does</em> work — dense, dark, single-file HTML docs sitting in <code>docs-html/</code> next to the code, with status badges and tradeoff tables and ADR templates — is just a private convention. It needs an LLM to know about it on the way in (via a system prompt) and a human to maintain it on the way out (via memory and discipline). Both are leaky.</p>
+
+<h2>What agent-docs is</h2>
+
+<p>A small, self-hostable service that bakes the working convention into a product the LLM harnesses can talk to natively.</p>
+
+<ul>
+  <li><strong>An MCP server.</strong> Coding agents (Claude Code, OpenAI Codex, OpenCode, Cursor, Zed, etc.) call typed tools — <code>create_plan</code>, <code>update_plan_step</code>, <code>create_decision</code>, <code>list_open_questions</code> — that mutate the canonical doc set for a project.</li>
+  <li><strong>A doc model with primitives, not pages.</strong> Plans, features, ADRs, and reviews are first-class entities with known shapes. The MCP surface is typed against them; the renderer knows how to display them.</li>
+  <li><strong>A navigable web UI.</strong> The dense, dark, no-JS aesthetic the convention already uses. Cross-project search, status dashboards, ADR timelines. Drill into any project; drill into any doc.</li>
+  <li><strong>Git-backed.</strong> Docs live in the project repo (in a <code>docs-html/</code> or <code>.agent-docs/</code> directory) and travel with the code. The server is a layer over those repos, not a replacement for them. If the server disappears tomorrow, every doc is still on every dev's laptop.</li>
+  <li><strong>Single Go binary, OSS, self-hostable.</strong> One person on a laptop, a team on a private network (behind any tunnel or VPN), or a community-run hosted instance — same binary, same model.</li>
+</ul>
+
+<h2>Who it's for</h2>
+
+<table>
+  <thead>
+    <tr><th>Audience</th><th>What they get</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Solo devs using AI heavily</strong></td>
+      <td>The trail of work is captured properly. Plans don't go missing between sessions. ADRs accumulate without ceremony.</td>
+    </tr>
+    <tr>
+      <td><strong>Small teams</strong></td>
+      <td>Shared visibility into what the AI is doing across everyone's branches. A single place to review pending plans and recent decisions.</td>
+    </tr>
+    <tr>
+      <td><strong>OSS maintainers</strong></td>
+      <td>Contributors and reviewers see plan trackers and ADRs as first-class artifacts in the repo, with a hosted view for the project site.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>What makes it different</h2>
+
+<table>
+  <thead>
+    <tr><th>vs.</th><th>Difference</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Notion / Confluence / Outline</td>
+      <td>LLM-first interface, not retrofitted "AI features". Typed doc primitives. Lives in your repo, not a SaaS silo.</td>
+    </tr>
+    <tr>
+      <td>Plain markdown in <code>docs/</code></td>
+      <td>Enforced shape (so all plans look like plans), web UI, cross-project view, MCP surface so every harness writes the same way.</td>
+    </tr>
+    <tr>
+      <td>Static site generators (Hugo, Astro, etc.)</td>
+      <td>Designed for the read+write loop with an agent, not just the read side. Mutation is typed, not file-editing.</td>
+    </tr>
+    <tr>
+      <td>Agent-specific memory / context tools</td>
+      <td>Output is durable, human-reviewable HTML — not internal scratch state. Shared across harnesses, not locked to one.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Non-goals</h2>
+
+<div class="panel">
+  <ul style="margin: 0;">
+    <li><strong>General-purpose wiki.</strong> If you want a free-form page tree with rich embedding, use Outline or Notion.</li>
+    <li><strong>Realtime collaborative editing.</strong> One writer per doc at a time is fine; the typical writer is an agent, and conflicts are resolved by git.</li>
+    <li><strong>Task tracker.</strong> Tasks belong in Linear / Jira / GitHub Issues. agent-docs covers the docs <em>about</em> work, not the work items themselves.</li>
+    <li><strong>Replacement for the existing in-repo convention.</strong> agent-docs <em>is</em> that convention, productised. It should feel like the natural next step, not a fork.</li>
+  </ul>
+</div>
+
+<h2>Where this is going</h2>
+
+<p>Order of operations, roughly:</p>
+
+<ol>
+  <li>Lock the architecture (source of truth, MCP runtime location, doc storage format). See <a href="architecture.html">architecture.html</a>.</li>
+  <li>Walking-skeleton MVP: single-binary Go server, one project, three doc types (plan, decision, review), wired to one LLM harness (Claude Code) via MCP. Web UI reads from disk.</li>
+  <li>Multi-project, multi-user. Auth, ACLs, cross-project search.</li>
+  <li>Second harness integration (Codex or OpenCode). Validate the convention holds across LLMs.</li>
+  <li>Hosted reference instance. Public docs site for agent-docs itself, hosted on agent-docs. (Dogfood all the way down.)</li>
+</ol>
+
+<div class="panel-note" style="margin-top: 24px;">
+  <strong>Tone check:</strong> this is a tool for engineers who already use AI heavily and have opinions about how their work should be recorded. It should feel opinionated and tight, not flexible-and-empty. The right comparison points are <code>gh</code>, <code>direnv</code>, <code>graphite</code> — not enterprise wikis.
+</div>
+
+<footer class="doc-foot">
+  <div>Native doc — no markdown source.</div>
+  <div><a href="index.html">↑ agent-docs Docs</a></div>
+</footer>
+
+</div>
+</body>
+</html>

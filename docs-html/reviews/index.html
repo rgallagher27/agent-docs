@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reviews — agent-docs</title>
+<style>
+  :root { --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6; --muted: #9aa5b1; --accent-2: #60a5fa; --border: #2d3744; --code-bg: #0a0e13; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 32px 96px; }
+  .breadcrumbs { font-size: 13px; color: var(--muted); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .breadcrumbs a { color: var(--accent-2); text-decoration: none; }
+  .breadcrumbs .sep { color: var(--border); margin: 0 8px; }
+  header.doc-head { padding: 24px 0 28px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.02em; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .lead { color: #cfd6df; font-size: 16px; margin: 0; }
+  .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+  code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #f0d090; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 16px 0; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 20px; }
+  a { color: var(--accent-2); }
+  footer.doc-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  footer.doc-foot a { color: var(--accent-2); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="breadcrumbs">
+  <a href="../index.html">agent-docs Docs</a>
+  <span class="sep">›</span>
+  <span>Reviews</span>
+</nav>
+
+<header class="doc-head">
+  <h1>Reviews</h1>
+  <div class="meta" style="margin-bottom: 14px;">
+    <span class="tag">section-index</span>
+    <span class="tag">empty</span>
+  </div>
+  <p class="lead">Code review notes, audit findings, post-mortems. Named <code>YYYY-MM-DD-{slug}.html</code>.</p>
+</header>
+
+<div class="panel">
+  <div class="empty">
+    <p style="font-size: 16px; margin-bottom: 6px;">No reviews yet.</p>
+    <p style="margin: 0;">Nothing to review — pre-code phase.</p>
+  </div>
+</div>
+
+<footer class="doc-foot">
+  <div>Native doc — no markdown source.</div>
+  <div><a href="../index.html">↑ agent-docs Docs</a></div>
+</footer>
+
+</div>
+</body>
+</html>

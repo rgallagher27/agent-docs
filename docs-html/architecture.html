@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Architecture — agent-docs</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6;
+    --muted: #9aa5b1; --accent: #f59e0b; --accent-2: #60a5fa; --accent-3: #a78bfa;
+    --good: #10b981; --warn: #f59e0b; --bad: #ef4444; --border: #2d3744; --code-bg: #0a0e13;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 32px 96px; }
+  .breadcrumbs { font-size: 13px; color: var(--muted); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .breadcrumbs a { color: var(--accent-2); text-decoration: none; }
+  .breadcrumbs a:hover { text-decoration: underline; }
+  .breadcrumbs .sep { color: var(--border); margin: 0 8px; }
+  header.doc-head { padding: 24px 0 28px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.02em; line-height: 1.2; }
+  h2 { margin: 44px 0 14px; font-size: 22px; letter-spacing: -0.01em; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { margin: 28px 0 10px; font-size: 17px; color: var(--accent-2); }
+  h4 { margin: 18px 0 6px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  p, ul, ol { margin: 0 0 12px; }
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent-2); }
+  a:hover { color: #93c5fd; }
+  code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #f0d090; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 10px 0 16px; position: relative; }
+  pre code { background: transparent; padding: 0; color: var(--text); font-size: 13px; }
+  pre[data-lang]::before { content: attr(data-lang); position: absolute; top: 6px; right: 10px; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  tr:hover td { background: var(--panel); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .lead { color: #cfd6df; font-size: 16px; margin: 0; }
+  .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge-good { background: rgba(16,185,129,0.15); color: var(--good); }
+  .badge-warn { background: rgba(245,158,11,0.18); color: var(--warn); }
+  .badge-bad  { background: rgba(239,68,68,0.15); color: var(--bad); }
+  .badge-info { background: rgba(96,165,250,0.15); color: var(--accent-2); }
+  .badge-purple { background: rgba(167,139,250,0.15); color: var(--accent-3); }
+  .badge-muted { background: var(--panel-2); color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 14px 0; }
+  .panel-note { background: rgba(96,165,250,0.06); border-left: 3px solid var(--accent-2); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-warn { background: rgba(245,158,11,0.06); border-left: 3px solid var(--warn); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-good { background: rgba(16,185,129,0.08); border-left: 3px solid var(--good); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 720px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .card h3 { margin-top: 0; }
+  .toc { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 20px; margin-bottom: 32px; }
+  .toc h3 { margin: 0 0 8px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc ol { margin: 0; padding-left: 18px; }
+  .toc a { color: var(--accent-2); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  svg { max-width: 100%; height: auto; display: block; margin: 16px auto; }
+  .diagram { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin: 16px 0; }
+  .pick { background: rgba(16,185,129,0.10); }
+  .pick td:first-child::after { content: " ✓"; color: var(--good); font-weight: 700; }
+  footer.doc-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  footer.doc-foot a { color: var(--accent-2); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="breadcrumbs">
+  <a href="index.html">agent-docs Docs</a>
+  <span class="sep">›</span>
+  <span>Architecture</span>
+</nav>
+
+<header class="doc-head">
+  <h1>Architecture</h1>
+  <div class="meta" style="margin-bottom: 14px;">
+    <span class="tag">architecture</span>
+    <span class="tag">in-flight</span>
+    <span class="tag">2026-05-28</span>
+    <span class="badge badge-warn">Draft v0</span>
+  </div>
+  <p class="lead">Current shape of the system, the tradeoffs that drive it, and the questions still open. This doc evolves as decisions land; each locked decision becomes an ADR under <code>decisions/</code>.</p>
+</header>
+
+<div class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#sketch">System sketch</a></li>
+    <li><a href="#tradeoff-source">Tradeoff: source of truth</a></li>
+    <li><a href="#tradeoff-mcp">Tradeoff: where the MCP server runs</a></li>
+    <li><a href="#tradeoff-format">Tradeoff: doc storage format</a></li>
+    <li><a href="#tradeoff-branches">Tradeoff: branches &amp; previews</a></li>
+    <li><a href="#mcp-surface">MCP surface (draft)</a></li>
+    <li><a href="#data-model">Data model</a></li>
+    <li><a href="#deploy">Deployment shapes</a></li>
+    <li><a href="#auth">Auth &amp; access control</a></li>
+    <li><a href="#open-questions">Open questions</a></li>
+  </ol>
+</div>
+
+<h2 id="sketch">System sketch</h2>
+
+<p>agent-docs is a single Go binary that exposes three surfaces, all reading from the same on-disk doc tree:</p>
+
+<div class="diagram">
+<svg viewBox="0 0 940 360" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9aa5b1"/>
+    </marker>
+  </defs>
+  <style>
+    .b { fill: #1a2028; stroke: #2d3744; stroke-width: 1.5; rx: 8; }
+    .b2 { fill: #232b36; stroke: #2d3744; stroke-width: 1.5; rx: 8; }
+    .acc { fill: #1a2028; stroke: #60a5fa; stroke-width: 1.5; rx: 8; }
+    .ttl { fill: #e6e6e6; font: 600 13px -apple-system, sans-serif; }
+    .sub { fill: #9aa5b1; font: 11px -apple-system, sans-serif; }
+    .arrow { stroke: #9aa5b1; stroke-width: 1.5; fill: none; }
+    .lbl { fill: #9aa5b1; font: 10px -apple-system, sans-serif; }
+  </style>
+
+  <rect class="b2" x="20" y="20" width="200" height="80"/>
+  <text class="ttl" x="120" y="48" text-anchor="middle">LLM harness</text>
+  <text class="sub" x="120" y="66" text-anchor="middle">Claude Code · Codex · OpenCode</text>
+  <text class="sub" x="120" y="80" text-anchor="middle">running on dev's machine</text>
+
+  <rect class="b2" x="20" y="140" width="200" height="60"/>
+  <text class="ttl" x="120" y="166" text-anchor="middle">Web browser</text>
+  <text class="sub" x="120" y="184" text-anchor="middle">dev, reviewer, teammate</text>
+
+  <rect class="b2" x="20" y="240" width="200" height="60"/>
+  <text class="ttl" x="120" y="266" text-anchor="middle">CLI (agent-docs)</text>
+  <text class="sub" x="120" y="284" text-anchor="middle">scripted / manual</text>
+
+  <rect class="acc" x="370" y="80" width="220" height="200"/>
+  <text class="ttl" x="480" y="108" text-anchor="middle">agent-docs server</text>
+  <text class="sub" x="480" y="124" text-anchor="middle">single Go binary</text>
+  <line x1="380" y1="138" x2="580" y2="138" stroke="#2d3744"/>
+  <text class="sub" x="480" y="158" text-anchor="middle">MCP server (stdio / http)</text>
+  <text class="sub" x="480" y="178" text-anchor="middle">HTTP web UI</text>
+  <text class="sub" x="480" y="198" text-anchor="middle">renderer</text>
+  <text class="sub" x="480" y="218" text-anchor="middle">git ops · pull/commit/push</text>
+  <text class="sub" x="480" y="238" text-anchor="middle">SQLite index · auth · search</text>
+
+  <rect class="b" x="740" y="40" width="180" height="80"/>
+  <text class="ttl" x="830" y="68" text-anchor="middle">project-A repo</text>
+  <text class="sub" x="830" y="86" text-anchor="middle">docs-html/ in git</text>
+
+  <rect class="b" x="740" y="140" width="180" height="80"/>
+  <text class="ttl" x="830" y="168" text-anchor="middle">project-B repo</text>
+  <text class="sub" x="830" y="186" text-anchor="middle">docs-html/ in git</text>
+
+  <rect class="b" x="740" y="240" width="180" height="80"/>
+  <text class="ttl" x="830" y="268" text-anchor="middle">project-C repo</text>
+  <text class="sub" x="830" y="286" text-anchor="middle">docs-html/ in git</text>
+
+  <path class="arrow" d="M220,60 L370,140" marker-end="url(#arr)"/>
+  <text class="lbl" x="280" y="92">MCP</text>
+
+  <path class="arrow" d="M220,170 L370,180" marker-end="url(#arr)"/>
+  <text class="lbl" x="280" y="168">HTTPS</text>
+
+  <path class="arrow" d="M220,270 L370,220" marker-end="url(#arr)"/>
+  <text class="lbl" x="280" y="258">stdio</text>
+
+  <path class="arrow" d="M590,140 L740,80" marker-end="url(#arr)"/>
+  <path class="arrow" d="M590,180 L740,180" marker-end="url(#arr)"/>
+  <path class="arrow" d="M590,220 L740,280" marker-end="url(#arr)"/>
+  <text class="lbl" x="640" y="172">git pull/push</text>
+</svg>
+</div>
+
+<p>Project repos are canonical. The server holds <strong>bare clones</strong> per project, exposes the MCP surface that agents write through (commits land on a target ref), and serves docs (HTML, as authored) plus navigation chrome (search, ref selector, section indexes) on demand from any ref. SQLite holds the cross-cutting index — projects, refs, users, sessions, search — but never doc content.</p>
+
+<h2 id="tradeoff-source">Tradeoff: source of truth</h2>
+
+<p>Where do docs <em>really</em> live? This shapes everything downstream.</p>
+
+<table>
+  <thead>
+    <tr><th>Option</th><th>Where docs live</th><th>Pros</th><th>Cons</th></tr>
+  </thead>
+  <tbody>
+    <tr class="pick">
+      <td><strong>A. Repo-canonical, server mirrors</strong></td>
+      <td>In <code>docs-html/</code> in each project's git repo. Server keeps working checkouts.</td>
+      <td>Docs version with code. PR-reviewable. Branch/merge semantics free. Server is rebuildable from <code>git clone</code>. No data loss if server dies.</td>
+      <td>Write path needs git ops (commit, push, pull). Concurrent writes need handling. Cross-project search needs an index.</td>
+    </tr>
+    <tr>
+      <td>B. Server-canonical, repo-free</td>
+      <td>In the server's filesystem / DB. No <code>docs-html/</code> in repos.</td>
+      <td>Simpler write model. Real-time collab possible.</td>
+      <td>Docs decoupled from code state. Checkout an old branch, docs don't follow. Server outage = no docs anywhere. No PR review.</td>
+    </tr>
+    <tr>
+      <td>C. Hybrid (server-canonical, snapshot export)</td>
+      <td>Server is primary; periodic export commits a snapshot back to the repo.</td>
+      <td>Best UX, still get a git-tracked snapshot for audit.</td>
+      <td>Two sources of truth most of the time. Reconciliation is the hard part of this design and there's no good answer.</td>
+    </tr>
+    <tr>
+      <td>D. Repo-canonical, local-only server</td>
+      <td>Same as A but server only runs on the dev's machine, no shared instance.</td>
+      <td>Trivially simple. Zero infra.</td>
+      <td>Loses cross-project view, team visibility, shared search. Becomes a glorified static-site generator.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="panel-good">
+  <strong>Pick: A.</strong> Repo-canonical, server mirrors via git. The server is a read-mostly aggregator and a write-front that translates typed MCP calls into git commits on a working checkout. This preserves the property that makes the existing convention valuable (docs live with code) and gives us the multi-user surface we need for free, via git itself.
+</div>
+
+<h2 id="tradeoff-mcp">Tradeoff: where the MCP server runs</h2>
+
+<p>Given (A), there are still two viable shapes for where mutation happens:</p>
+
+<table>
+  <thead>
+    <tr><th>Option</th><th>Where MCP runs</th><th>Pros</th><th>Cons</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1. Local-only</td>
+      <td>Each dev runs agent-docs on their laptop. MCP mutates files in their local checkout. They commit and push.</td>
+      <td>Zero infra. Each write is naturally serial. No conflicts.</td>
+      <td>No team-shared instance unless every dev runs one and aggregates somehow. Cross-project view fragmented.</td>
+    </tr>
+    <tr class="pick">
+      <td><strong>2. Both (local <em>or</em> shared)</strong></td>
+      <td>The same binary serves either mode. Solo devs run it locally; teams run a shared instance. MCP clients point at whichever.</td>
+      <td>Same product, two deployment shapes. Solo path is the team path without auth. Familiar OSS positioning.</td>
+      <td>Shared instance has to handle concurrent writes (different devs' agents writing simultaneously). Mitigated by per-doc advisory locks + git's own conflict resolution.</td>
+    </tr>
+    <tr>
+      <td>3. Shared-only</td>
+      <td>Always a remote server. Local agents call it.</td>
+      <td>Single canonical instance simplifies the mental model.</td>
+      <td>Worse solo UX. Needs network for everything. Higher barrier to first-run.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="panel-good">
+  <strong>Pick: 2.</strong> The binary serves both. <code>agent-docs serve</code> with no auth flags runs in single-user mode against a local checkout. <code>agent-docs serve --auth</code> on a VPS or in Docker runs in team mode against a configured set of repos. Same code path; the difference is whether <code>SQLite/users</code> is populated and whether the bind address is loopback.
+</div>
+
+<h2 id="tradeoff-format">Tradeoff: doc storage format</h2>
+
+<p>The LLM's output is full of inline SVG diagrams, in-page mockups, custom grid layouts, colored panels — things a Markdown source language can't express. The doc <em>is</em> HTML; trying to derive it from a more constrained source is a lossy abstraction. (Earlier drafts of this section recommended a Markdown-source + HTML-render model — that was wrong; it gave up authoring expressiveness for tooling friendliness that didn't actually matter.)</p>
+
+<table>
+  <thead>
+    <tr><th>Option</th><th>Storage</th><th>Pros</th><th>Cons</th></tr>
+  </thead>
+  <tbody>
+    <tr class="pick">
+      <td><strong>i. HTML-canonical (current convention)</strong></td>
+      <td>The committed file is fully self-contained HTML with inline CSS, written by the LLM following the style template. Server stores and serves as-is.</td>
+      <td>LLM keeps full expressive range — SVG, mockups, custom layouts. Files open via <code>file://</code>. No build step, nothing to "keep in sync". Matches the existing working convention. Storage and authoring are the same model.</td>
+      <td>CSS repeats in every file. Updating site-wide style means rewriting every file. LLM has to retype boilerplate per doc (mitigable via a <code>scaffold_doc</code> MCP helper).</td>
+    </tr>
+    <tr>
+      <td>ii. HTML body + server-templated chrome</td>
+      <td>LLM writes only the body content; server templates inline CSS + breadcrumb + footer at write time. Committed file is the full self-contained HTML.</td>
+      <td>LLM types less per doc. Site-wide style updates are easier in principle.</td>
+      <td>Site-wide style changes produce huge git churn (every doc re-rendered, every ref). Couples docs to the server's templating. Loses portability — if you take docs out of agent-docs, the chrome leaves with them.</td>
+    </tr>
+    <tr>
+      <td>iii. Markdown source + HTML render</td>
+      <td>Canonical is <code>.md</code> with YAML frontmatter; HTML is rendered on demand.</td>
+      <td>Tooling-friendly. Familiar SSG model. Easier programmatic mutation in principle.</td>
+      <td>Markdown can't express the LLM's full output. SVG, custom panels, mockups, side-by-sides all become escape hatches. <strong>Rejected — this was the earlier wrong direction.</strong></td>
+    </tr>
+    <tr>
+      <td>iv. Structured-only data, rendered to HTML</td>
+      <td>Stored as YAML/JSON; server renders to HTML.</td>
+      <td>Strongly typed.</td>
+      <td>Even more constraining than markdown. Throws away the LLM's HTML-native authoring entirely.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="panel-good">
+  <strong>Pick: i.</strong> The committed file is HTML, full stop. The LLM authors it directly following the style template; the server stores and serves it as-is. This matches the existing working convention and preserves the LLM's expressive range. If CSS-repetition toil becomes annoying later, the server can offer a <code>scaffold_doc</code> MCP helper that returns a boilerplate-wrapped scaffold for the LLM to fill in — that's a UX tweak, not a storage-model change.
+</div>
+
+<div class="panel-note">
+  <strong>Implication for "structured" features:</strong> things like ADR auto-numbering, status, step trackers, typed cross-doc links don't need a structured source format. They're already expressible via semantic HTML in the style template (<code>.badge</code> classes, <code>.checklist</code>, <code>data-*</code> attributes on <code>&lt;a&gt;</code> for typed links). The server parses the HTML on ingest to populate the search/list index in SQLite — metadata is <em>derived</em> from the doc, not declared alongside it.
+</div>
+
+<h2 id="tradeoff-branches">Tradeoff: branches &amp; previews</h2>
+
+<p>Work happens in feature branches; the web UI has one URL space. Two scenarios drive the design:</p>
+
+<ul>
+  <li><strong>Branch-stable work</strong> — a dev on <code>feat/foo</code> writes docs as part of the change; they merge into trunk alongside the code.</li>
+  <li><strong>Spike previews</strong> — a dev wants a shareable URL for comment <em>before</em> (or instead of) merging. The URL must be stable enough to drop in Slack and re-open a week later.</li>
+</ul>
+
+<p>Both must be first-class. A docs system that only renders trunk is hostile to how teams actually work.</p>
+
+<table>
+  <thead>
+    <tr><th>Option</th><th>Model</th><th>Pros</th><th>Cons</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>A. Main only</td>
+      <td>Server only renders the trunk branch. Branches are invisible until merged.</td>
+      <td>Trivially simple.</td>
+      <td>Spike review is impossible. Defers all collaboration to PR diffs. Misses the whole point of "share a URL".</td>
+    </tr>
+    <tr>
+      <td>B. Branch-in-URL</td>
+      <td>Every URL is branch-scoped: <code>/p/{proj}/{ref}/path</code>. Trunk aliases to the clean form.</td>
+      <td>Mirrors GitHub. Explicit. Any pushed branch is browsable.</td>
+      <td>Need explicit semantics for what happens after a branch merges or is deleted.</td>
+    </tr>
+    <tr class="pick">
+      <td><strong>C. Branch-in-URL + preview lifecycle</strong></td>
+      <td>Same as B, plus explicit lifecycle: merged branches alias forward to their post-merge location; deleted-unmerged branches keep an archived snapshot at the last SHA.</td>
+      <td>Spike URLs stay valid. Branch URLs survive their branch. The Vercel-style preview pattern works natively. Comment threads in Slack don't 404 after a merge.</td>
+      <td>More moving parts. Needs a GC policy for snapshots eventually.</td>
+    </tr>
+    <tr>
+      <td>D. Server-side drafts (not git branches)</td>
+      <td>The server has its own "draft" concept, separate from git.</td>
+      <td>Decouples from git's branch model.</td>
+      <td>Reinvents branches. Reconciliation problem. Splits the source of truth — which is the thing we just decided not to do.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="panel-good">
+  <strong>Pick: C.</strong> Every URL is branch-scoped; the trunk URL is just the alias. Branches are first-class objects with a lifecycle. Spike previews are the natural shape, not a special case.
+</div>
+
+<h3>URL shape</h3>
+
+<p>Canonical: <code>/p/{project}/{ref}/path/to/doc.html</code>.</p>
+
+<ul>
+  <li><code>{ref}</code> is a branch name, tag, or short SHA.</li>
+  <li>The configured trunk (default <code>main</code>) gets an alias: <code>/p/{project}/path/to/doc.html</code> serves the same content as <code>/p/{project}/main/path/to/doc.html</code>.</li>
+  <li>Branch names with slashes (<code>feat/foo</code>) are path-segmented. A reserved sentinel (<code>refs/heads/</code>) disambiguates only when a branch name would clash with a doc path.</li>
+  <li>A short SHA URL (<code>/p/proj/a1b2c3d/...</code>) is the "permalink" form — survives branch deletion forever.</li>
+</ul>
+
+<h3>Branch lifecycle &amp; URL behavior</h3>
+
+<table>
+  <thead>
+    <tr><th>Event</th><th>URL behavior</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Branch pushed (new)</td><td>Server indexes the ref; URLs go live within seconds.</td></tr>
+    <tr><td>Branch updated (more commits)</td><td>Rendered output refreshes; URL unchanged.</td></tr>
+    <tr><td>Branch merged into trunk</td><td>Branch URLs stay valid but render a banner ("merged into <code>main</code> at <code>abc1234</code>"). Doc-level URLs alias forward to the post-merge location on trunk.</td></tr>
+    <tr><td>Branch deleted, unmerged</td><td>Server keeps a snapshot of the last SHA. URL renders with a "branch deleted" banner. The permalink (<code>/p/proj/{sha}/...</code>) still works.</td></tr>
+    <tr><td>Snapshot ages out</td><td>Configurable retention. Default: keep indefinitely on hosted; per-project TTL for self-hosted with disk constraints.</td></tr>
+  </tbody>
+</table>
+
+<h3>Two paths for the spike-and-share use case</h3>
+
+<table>
+  <thead>
+    <tr><th>Path</th><th>How it works</th><th>When it fits</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Shared / hosted instance</td>
+      <td>Dev pushes the spike branch. Server picks it up via webhook (or poll), renders, serves at <code>/p/proj/spike-name/...</code>. Dev pastes the URL in Slack.</td>
+      <td>Team has a shared instance; pushing the branch is acceptable. The common case.</td>
+    </tr>
+    <tr>
+      <td>Local + reverse tunnel</td>
+      <td>Dev runs <code>agent-docs serve</code> locally; working tree is the truth. The server is exposed to teammates by whatever tunnel / VPN the team uses — Tailscale, Cloudflare Tunnel, ngrok, plain LAN, anything. agent-docs has no preference; it's just an HTTP server.</td>
+      <td>Spike isn't pushable yet (half-broken, contains secrets, pre-branch). Team has any way to reach the dev's machine. Async review while the dev's machine is up.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="panel-note">
+  In local mode, the server's default ref is "whatever the working tree is on" — <code>git checkout other-branch</code> switches what the server renders, no restart. Explicit <code>{ref}</code> in the URL reads from the local clone's bare-repo cache if the branch exists there.
+</div>
+
+<h3>Where MCP writes land</h3>
+
+<table>
+  <thead>
+    <tr><th>Context</th><th>Branch chosen by</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Local MCP, local server</td><td>The dev's current local branch (HEAD).</td></tr>
+    <tr><td>Local MCP, shared server</td><td>Branch is pinned in the per-project MCP config; defaults to the dev's current local branch if discoverable.</td></tr>
+    <tr><td>Shared MCP</td><td>Branch is pinned in the session config. <code>create_plan</code> et al. accept an explicit <code>branch:</code> arg that overrides.</td></tr>
+    <tr><td>Cross-branch reads</td><td><code>get_doc</code> / <code>search</code> take an explicit <code>ref:</code>. Writes always target one branch.</td></tr>
+  </tbody>
+</table>
+
+<h3>Storage implication</h3>
+
+<p>The earlier sketch hinted at per-project working checkouts on the server. For multi-branch support those become <strong>bare clones</strong>. Reads pull the doc's HTML blob from the target ref and serve it directly; writes use go-git's in-memory tree manipulation to produce a commit on the target ref and push. There's no render step — the HTML committed to git is what gets served. Section indexes and chrome (search bar, ref selector, "merged" banner) are still generated server-side, but the doc content itself is delivered as authored.</p>
+
+<h2 id="mcp-surface">MCP surface (draft)</h2>
+
+<p>First-cut tool list. Names and shapes are illustrative; the real list comes out of building one end-to-end loop.</p>
+
+<div class="panel-note">
+  <strong>HTML-canonical implication:</strong> the typed helpers below (<code>create_plan</code>, <code>update_plan_step</code>, etc.) are convenience wrappers that <em>compose</em> a lower-level surface — <code>write_doc(project, ref, path, html)</code>, <code>patch_doc(project, ref, path, anchor, html)</code>, <code>scaffold_doc(section, slug, …)</code>. The LLM authors the actual HTML; the helpers enforce conventions (auto-numbering, section index updates, filename shape) and reduce boilerplate. Expect the surface to settle once one end-to-end loop is wired up.
+</div>
+
+<table>
+  <thead>
+    <tr><th>Tool</th><th>Purpose</th><th>Mutates</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>list_projects()</code></td><td>List projects the caller can see.</td><td>—</td></tr>
+    <tr><td><code>list_docs(project, section?, status?)</code></td><td>Browse a project's docs by section and status.</td><td>—</td></tr>
+    <tr><td><code>get_doc(project, path)</code></td><td>Fetch a doc's structured source + rendered HTML.</td><td>—</td></tr>
+    <tr><td><code>search(project?, query)</code></td><td>Full-text + structured search; scoped or cross-project.</td><td>—</td></tr>
+    <tr><td><code>create_plan(project, slug, title, steps, links?)</code></td><td>Create a new plan with tracker steps.</td><td>git commit</td></tr>
+    <tr><td><code>update_plan_step(project, slug, step, status, note?)</code></td><td>Mark a step done / blocked / in-progress.</td><td>git commit</td></tr>
+    <tr><td><code>create_feature(project, name, body, key_files?)</code></td><td>Record a shipped feature.</td><td>git commit</td></tr>
+    <tr><td><code>create_decision(project, title, context, decision, consequences)</code></td><td>New ADR, auto-numbered.</td><td>git commit</td></tr>
+    <tr><td><code>create_review(project, slug, body, findings?)</code></td><td>Record a code review / post-mortem.</td><td>git commit</td></tr>
+    <tr><td><code>set_project_status(project, body)</code></td><td>Update the top-level project status doc.</td><td>git commit</td></tr>
+    <tr><td><code>link(project, from, to, kind)</code></td><td>Add a typed link between two docs (e.g. plan implements ADR-014).</td><td>git commit</td></tr>
+  </tbody>
+</table>
+
+<p>Each mutating tool returns the resulting doc's path and rendered HTML so the agent can show the human what it produced.</p>
+
+<h2 id="data-model">Data model</h2>
+
+<p>Two stores, with a hard line between them:</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>On disk (git-backed)</h3>
+    <p style="color: var(--muted); margin: 0 0 8px;">The truth. Per-project <code>docs-html/</code> directories — full self-contained HTML files, exactly as the LLM produced them.</p>
+    <ul style="margin: 0;">
+      <li><code>plans/YYYY-MM-DD-slug.html</code></li>
+      <li><code>features/{name}.html</code></li>
+      <li><code>decisions/NNN-{name}.html</code></li>
+      <li><code>reviews/YYYY-MM-DD-slug.html</code></li>
+      <li><code>index.html</code>, <code>PROJECT_STATUS.html</code>, etc.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>SQLite (index + identity)</h3>
+    <p style="color: var(--muted); margin: 0 0 8px;">Rebuildable from on-disk content. Never canonical.</p>
+    <ul style="margin: 0;">
+      <li><code>projects</code> — id, slug, git remote, bare-clone path, trunk ref</li>
+      <li><code>refs</code> — project, ref name, kind (branch/tag/snapshot), state (active/merged/deleted), last_sha, last_seen_at, retention</li>
+      <li><code>docs</code> — path, project, ref, section, title, status, updated_at, parsed metadata (json — tags, badges, link refs extracted from the HTML on ingest)</li>
+      <li><code>links</code> — from_doc, to_doc, kind, ref-scope</li>
+      <li><code>fts</code> — FTS5 over rendered text</li>
+      <li><code>users</code>, <code>tokens</code>, <code>acls</code></li>
+      <li><code>audit</code> — who did what, when, which commit</li>
+    </ul>
+  </div>
+</div>
+
+<p>Invariant: deleting the SQLite file and re-running <code>agent-docs reindex</code> reproduces a working instance. The git tree is the only thing that matters.</p>
+
+<h2 id="deploy">Deployment shapes</h2>
+
+<div class="grid-3">
+  <div class="card">
+    <h3>Solo / local <span class="badge badge-info">tier 0</span></h3>
+    <p style="color: var(--muted);"><code>agent-docs serve</code> on the dev's machine. Points at a directory of project checkouts. Loopback only, no auth. Single user.</p>
+  </div>
+  <div class="card">
+    <h3>Team / self-hosted <span class="badge badge-info">tier 1</span></h3>
+    <p style="color: var(--muted);">Docker image / docker-compose. Persistent volume for git checkouts + SQLite. OIDC or API tokens. Behind a reverse proxy on the team's network.</p>
+  </div>
+  <div class="card">
+    <h3>Public / hosted <span class="badge badge-info">tier 2</span></h3>
+    <p style="color: var(--muted);">Multi-tenant managed instance (community-run or commercial). Tenant isolation, billing if applicable. OSS binary, same image.</p>
+  </div>
+</div>
+
+<h2 id="auth">Auth &amp; access control</h2>
+
+<ul>
+  <li><strong>MCP clients</strong> authenticate with API tokens scoped to a user and a set of projects. Tokens are issued via the web UI; agents store them like any other secret.</li>
+  <li><strong>Web users</strong> authenticate via OIDC (Google / GitHub / generic) or local password for self-hosted. Sessions in a signed cookie.</li>
+  <li><strong>ACLs</strong> are per-project: <code>read</code>, <code>write</code>, <code>admin</code>. ADR-worthy enough to deserve its own doc once we settle on it; deliberately simple for now.</li>
+  <li><strong>Single-user mode</strong> skips all of this — no users table populated, no auth middleware, loopback bind. Toggle on by passing nothing.</li>
+</ul>
+
+<h2 id="open-questions">Open questions</h2>
+
+<p>These are the next things to lock. Each becomes an ADR under <a href="decisions/index.html">decisions/</a> once decided.</p>
+
+<table>
+  <thead>
+    <tr><th>#</th><th>Question</th><th>Lean</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Q1</td><td>Source of truth: repo-canonical with git-backed server?</td><td>Yes (option A above)</td><td><span class="badge badge-good">Accepted (<a href="decisions/001-repo-canonical-source-of-truth.html">ADR-001</a>)</span></td></tr>
+    <tr><td>Q2</td><td>Doc storage format?</td><td>HTML is canonical and committed. LLM writes HTML directly following the style template; no markdown source, no render step. See revised tradeoff section.</td><td><span class="badge badge-good">Resolved (HTML-canonical)</span></td></tr>
+    <tr><td>Q3</td><td>Does the server transform docs at write time, or store them verbatim?</td><td>Verbatim. The LLM's output is what's committed and what's served. Optional <code>scaffold_doc</code> MCP helper returns boilerplate-wrapped scaffolds to reduce LLM toil; the LLM still authors the final HTML.</td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q4</td><td>Does the dev's local checkout matter to the server, or does the server own its own clones only?</td><td>Server owns bare clones; reads HTML for any ref directly from them. The dev's local checkout matters only in local-mode for serving the working tree.</td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q5</td><td>Project location: <code>docs-html/</code> at the repo root vs <code>.agent-docs/</code> hidden dir vs configurable?</td><td>Configurable, default <code>docs-html/</code></td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q6</td><td>How are projects registered with a shared instance? Manual config? OAuth-driven git access?</td><td>Manual + per-project deploy key</td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q7</td><td>How does the LLM know <em>which</em> project and <em>which</em> branch it's writing into?</td><td>Per-MCP-client config pins project; branch defaults to dev's current local HEAD, overridable per call</td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q8</td><td>Concurrent writes from multiple agents on the same branch: advisory lock, optimistic with git conflict resolution, or queue?</td><td>Optimistic + git merge; branch-level lock around the commit-and-push window; cross-branch writes never conflict</td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q9</td><td>What's the minimum harness set for MVP? Claude Code only, or two from day one?</td><td>Claude Code only for MVP; second as validation</td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q10</td><td>Does agent-docs ship a static-site generator that teams can use independently of the server?</td><td>Yes — <code>agent-docs render</code> takes a ref and emits a self-contained static directory: docs copied as-is plus generated section/root index pages. Useful for offline review, GitHub Pages, etc. No content transformation, just packaging.</td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q11</td><td>URL scheme for branches: path segment, flat, or subdomain?</td><td>Path segment (<code>/p/{proj}/{ref}/...</code>); reserved <code>refs/heads/</code> sentinel only if branch name would clash with a doc path</td><td><span class="badge badge-good">Accepted (<a href="decisions/003-branch-aware-urls-with-preview-lifecycle.html">ADR-003</a>)</span></td></tr>
+    <tr><td>Q12</td><td>Branch discovery on a shared instance: webhooks, git protocol receive, or polling?</td><td>Webhooks (GitHub/GitLab) primary; polling fallback for self-hosted git remotes that don't push events</td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q13</td><td>Spike-URL lifetime after the branch is deleted unmerged. Retain forever, TTL, or 404?</td><td>Snapshot of last SHA retained indefinitely on hosted; configurable TTL on self-hosted; permalink (<code>/p/proj/{sha}/...</code>) always works</td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q14</td><td>Local server: serve only the working-tree's branch, or also serve other branches available in the local repo?</td><td>Working tree only by default; <code>--all-branches</code> opt-in for power use</td><td><span class="badge badge-muted">Open</span></td></tr>
+    <tr><td>Q15</td><td>Should rendered HTML be committed to the repo, or kept out of git entirely?</td><td>HTML <em>is</em> the canonical form — committed to git. The earlier "source-only" direction was wrong: it assumed a Markdown source language, which can't express the LLM's HTML-native output (SVG, mockups, custom layouts). The "render" framing doesn't apply.</td><td><span class="badge badge-good">Resolved (obsolete framing)</span></td></tr>
+  </tbody>
+</table>
+
+<div class="panel-note" style="margin-top: 24px;">
+  <strong>Next move:</strong> three foundational ADRs to lock the spine — <code>decisions/001-repo-canonical-source-of-truth.html</code>, <code>decisions/002-html-canonical-no-source-language.html</code>, and <code>decisions/003-branch-aware-urls-with-preview-lifecycle.html</code>. Then scope a walking-skeleton MVP plan in <code>plans/</code> that exercises one branch-aware loop: <code>create_doc</code> on a feature branch → push → preview URL → edit doc → merge → forward-aliased URL still resolves.
+</div>
+
+<footer class="doc-foot">
+  <div>Native doc — no markdown source.</div>
+  <div><a href="index.html">↑ agent-docs Docs</a></div>
+</footer>
+
+</div>
+</body>
+</html>

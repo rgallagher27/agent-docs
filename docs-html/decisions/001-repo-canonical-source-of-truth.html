@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ADR-001 — Repo-canonical source of truth — agent-docs</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6;
+    --muted: #9aa5b1; --accent: #f59e0b; --accent-2: #60a5fa; --accent-3: #a78bfa;
+    --good: #10b981; --warn: #f59e0b; --bad: #ef4444; --border: #2d3744; --code-bg: #0a0e13;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 32px 96px; }
+  .breadcrumbs { font-size: 13px; color: var(--muted); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .breadcrumbs a { color: var(--accent-2); text-decoration: none; }
+  .breadcrumbs a:hover { text-decoration: underline; }
+  .breadcrumbs .sep { color: var(--border); margin: 0 8px; }
+  header.doc-head { padding: 24px 0 28px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.02em; line-height: 1.2; }
+  h2 { margin: 44px 0 14px; font-size: 22px; letter-spacing: -0.01em; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { margin: 28px 0 10px; font-size: 17px; color: var(--accent-2); }
+  p, ul, ol { margin: 0 0 12px; }
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent-2); }
+  code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #f0d090; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .lead { color: #cfd6df; font-size: 16px; margin: 0; }
+  .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge-good { background: rgba(16,185,129,0.15); color: var(--good); }
+  .badge-warn { background: rgba(245,158,11,0.18); color: var(--warn); }
+  .badge-info { background: rgba(96,165,250,0.15); color: var(--accent-2); }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 14px 0; }
+  .panel-note { background: rgba(96,165,250,0.06); border-left: 3px solid var(--accent-2); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-warn { background: rgba(245,158,11,0.06); border-left: 3px solid var(--warn); padding: 14px 18px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-warn h3 { margin-top: 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 0; border: none; }
+  .panel-warn h3:first-child { margin-top: 0; }
+  footer.doc-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  footer.doc-foot a { color: var(--accent-2); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="breadcrumbs">
+  <a href="../index.html">agent-docs Docs</a>
+  <span class="sep">›</span>
+  <a href="index.html">Decisions</a>
+  <span class="sep">›</span>
+  <span>ADR-001</span>
+</nav>
+
+<header class="doc-head">
+  <h1>ADR-001 — Repo-canonical source of truth</h1>
+  <div class="meta" style="margin-bottom: 14px;">
+    <span class="tag">adr</span>
+    <span class="tag">001</span>
+    <span class="tag">2026-05-28</span>
+    <span class="badge badge-good">Accepted</span>
+  </div>
+  <p class="lead">Project docs live in <code>docs-html/</code> in each project's git repository. The agent-docs server holds bare clones per project. SQLite holds derived index only — it can be rebuilt from the git tree at any time.</p>
+</header>
+
+<div class="panel-note">
+  <strong>Status:</strong> Accepted, 2026-05-28. Resolves Q1 from <a href="../architecture.html#open-questions">Architecture › Open questions</a>. Foundational for ADR-002 and ADR-003.
+</div>
+
+<h2>Context</h2>
+
+<p>agent-docs needs a place to put the docs. The choice of where they "really" live shapes everything downstream: how the server is structured, what happens when the server is down, whether docs version with code, how PR review works, how multi-user concurrency is handled, and whether we can support self-hosting without lock-in.</p>
+
+<p>Constraints that drove the decision:</p>
+
+<ul>
+  <li>Docs should be reviewable in PRs alongside the code they describe.</li>
+  <li>A server outage must not lose work — a hard requirement for a tool teams will rely on.</li>
+  <li>Branching and merging must work end-to-end: work happens in feature branches.</li>
+  <li>Multi-user OSS positioning means no proprietary storage layer that locks teams to one vendor.</li>
+  <li>Operationally cheap to self-host: ideally a single binary plus a directory.</li>
+</ul>
+
+<p>Four options considered (full tradeoff table in <a href="../architecture.html#tradeoff-source">Architecture › Source of truth</a>):</p>
+
+<table>
+  <thead>
+    <tr><th>Option</th><th>One-line summary</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>A. Repo-canonical, server mirrors</td><td>Docs in <code>docs-html/</code> in each project repo; server holds working copies.</td></tr>
+    <tr><td>B. Server-canonical, no repo</td><td>Docs in the server's DB; nothing in the repo.</td></tr>
+    <tr><td>C. Hybrid</td><td>Server-canonical with snapshot export to the repo.</td></tr>
+    <tr><td>D. Repo-canonical, local-only server</td><td>Same as A but no shared instance.</td></tr>
+  </tbody>
+</table>
+
+<h2>Decision</h2>
+
+<div class="panel">
+  <p style="margin: 0 0 12px;"><strong>Option A — repo-canonical, server as a git-backed layer.</strong></p>
+  <ul style="margin: 0;">
+    <li>Each project's docs live in a directory (default <code>docs-html/</code>, configurable per project) at the root of that project's git repository.</li>
+    <li>The agent-docs server holds <strong>bare clones</strong> per project. It does not maintain working checkouts.</li>
+    <li>Reads serve doc content directly from the requested ref in the bare clone.</li>
+    <li>Writes via MCP use go-git's in-memory tree manipulation to produce a commit on the target ref and push to the project's remote.</li>
+    <li>SQLite holds derived state only — project list, ref metadata, parsed-from-HTML doc metadata, full-text search, users, ACLs. It is rebuildable from the git tree at any time, by design.</li>
+  </ul>
+</div>
+
+<h2>Consequences</h2>
+
+<div class="panel-warn">
+  <h3 style="color: var(--good);">Wins</h3>
+  <ul>
+    <li>Docs version with code. PR review of doc changes is free.</li>
+    <li>Server outage doesn't lose any doc — every dev's local clone has them.</li>
+    <li>Branching, merging, conflict resolution are git's job, not ours.</li>
+    <li>Self-hosting is "run the binary, point at a directory" — no proprietary store to back up.</li>
+    <li>Cross-project search and a unified UI are still possible via the bare clones; SQLite just indexes them.</li>
+  </ul>
+
+  <h3 style="color: var(--bad);">Costs</h3>
+  <ul style="margin-bottom: 0;">
+    <li>Write latency includes a git commit + push round-trip (typically &lt; 1 s; can be parallelised for batched writes).</li>
+    <li>The server needs git access to every registered project remote — deploy keys, GitHub App tokens, etc. <span class="badge badge-info">Q6 open</span></li>
+    <li>Branch discovery requires either webhooks or polling. <span class="badge badge-info">Q12 open</span></li>
+    <li>Concurrent writes to the same branch need a short branch-level lock around the commit-push window. <span class="badge badge-info">Q8 open</span></li>
+    <li>Schema changes that touch all docs (renaming a section, moving paths) require migration commits across every project — there is no central rename.</li>
+  </ul>
+</div>
+
+<h2>Status &amp; revision</h2>
+
+<p>Accepted 2026-05-28. Foundational. <a href="002-html-canonical-no-source-language.html">ADR-002</a> (storage format) and <a href="003-branch-aware-urls-with-preview-lifecycle.html">ADR-003</a> (URL model) both build on this decision.</p>
+
+<footer class="doc-foot">
+  <div>Native doc — no markdown source.</div>
+  <div><a href="index.html">↑ Decisions</a> · <a href="../index.html">agent-docs Docs</a></div>
+</footer>
+
+</div>
+</body>
+</html>

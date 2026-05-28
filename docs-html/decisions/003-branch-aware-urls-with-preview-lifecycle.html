@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ADR-003 — Branch-aware URLs with preview lifecycle — agent-docs</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6;
+    --muted: #9aa5b1; --accent: #f59e0b; --accent-2: #60a5fa; --accent-3: #a78bfa;
+    --good: #10b981; --warn: #f59e0b; --bad: #ef4444; --border: #2d3744; --code-bg: #0a0e13;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 32px 96px; }
+  .breadcrumbs { font-size: 13px; color: var(--muted); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .breadcrumbs a { color: var(--accent-2); text-decoration: none; }
+  .breadcrumbs a:hover { text-decoration: underline; }
+  .breadcrumbs .sep { color: var(--border); margin: 0 8px; }
+  header.doc-head { padding: 24px 0 28px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.02em; line-height: 1.2; }
+  h2 { margin: 44px 0 14px; font-size: 22px; letter-spacing: -0.01em; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { margin: 28px 0 10px; font-size: 17px; color: var(--accent-2); }
+  p, ul, ol { margin: 0 0 12px; }
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent-2); }
+  code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #f0d090; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .lead { color: #cfd6df; font-size: 16px; margin: 0; }
+  .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge-good { background: rgba(16,185,129,0.15); color: var(--good); }
+  .badge-info { background: rgba(96,165,250,0.15); color: var(--accent-2); }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 14px 0; }
+  .panel h3 { margin-top: 18px; }
+  .panel h3:first-child { margin-top: 0; }
+  .panel-note { background: rgba(96,165,250,0.06); border-left: 3px solid var(--accent-2); padding: 12px 16px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-warn { background: rgba(245,158,11,0.06); border-left: 3px solid var(--warn); padding: 14px 18px; border-radius: 4px; margin: 12px 0; color: #cfd6df; font-size: 14px; }
+  .panel-warn h3 { margin-top: 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 0; border: none; }
+  .panel-warn h3:first-child { margin-top: 0; }
+  footer.doc-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  footer.doc-foot a { color: var(--accent-2); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="breadcrumbs">
+  <a href="../index.html">agent-docs Docs</a>
+  <span class="sep">›</span>
+  <a href="index.html">Decisions</a>
+  <span class="sep">›</span>
+  <span>ADR-003</span>
+</nav>
+
+<header class="doc-head">
+  <h1>ADR-003 — Branch-aware URLs with preview lifecycle</h1>
+  <div class="meta" style="margin-bottom: 14px;">
+    <span class="tag">adr</span>
+    <span class="tag">003</span>
+    <span class="tag">2026-05-28</span>
+    <span class="badge badge-good">Accepted</span>
+  </div>
+  <p class="lead">Every URL is branch-scoped. Trunk is the alias. Branches have an explicit lifecycle so spike URLs survive merge and deletion — drop one in Slack, it still resolves a week later.</p>
+</header>
+
+<div class="panel-note">
+  <strong>Status:</strong> Accepted, 2026-05-28. Resolves Q11. Operational details (Q12 branch discovery, Q13 snapshot TTL, Q14 local-mode flags) are deferred to MVP implementation.
+</div>
+
+<h2>Context</h2>
+
+<p>Given <a href="001-repo-canonical-source-of-truth.html">ADR-001</a> (docs are in git) and <a href="002-html-canonical-no-source-language.html">ADR-002</a> (HTML is what's stored), the next question is how the web UI surfaces docs across git branches.</p>
+
+<p>Work happens in feature branches; the web has a single URL space. Two scenarios drive the design:</p>
+
+<ul>
+  <li><strong>Branch-stable work</strong> — a dev on <code>feat/foo</code> writes docs as part of the change; they merge into trunk alongside the code.</li>
+  <li><strong>Spike previews</strong> — a dev wants a shareable URL for comment <em>before</em> (or instead of) merging. The URL must be stable enough to drop in Slack and re-open a week later, even after the branch is gone.</li>
+</ul>
+
+<p>A docs system that only renders trunk is hostile to how teams actually work. Pre-merge review of an LLM-authored design exploration is exactly the use case agent-docs exists to support.</p>
+
+<h2>Decision</h2>
+
+<div class="panel">
+  <p><strong>Every URL is branch-scoped. Trunk is just the alias. Branches have an explicit lifecycle.</strong></p>
+
+  <h3>URL shape</h3>
+  <ul>
+    <li>Canonical: <code>/p/{project}/{ref}/path/to/doc.html</code>.</li>
+    <li><code>{ref}</code> is a branch name, tag, or short commit SHA.</li>
+    <li>The trunk branch (default <code>main</code>) is also reachable via the clean form <code>/p/{project}/path/to/doc.html</code>.</li>
+    <li>The SHA form <code>/p/{project}/{sha}/...</code> is the <em>permalink</em> — it always resolves as long as the commit is reachable in the bare clone, even after the branch is deleted.</li>
+    <li>Branch names with slashes (<code>feat/foo</code>) are path-segmented. A reserved sentinel <code>refs/heads/</code> disambiguates only when a branch name would clash with a real doc path.</li>
+  </ul>
+
+  <h3>Branch lifecycle</h3>
+  <table>
+    <thead>
+      <tr><th>Event</th><th>URL behavior</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Branch pushed (new)</td><td>Server indexes the ref; URLs go live within seconds.</td></tr>
+      <tr><td>Branch updated</td><td>Output refreshes; URL unchanged.</td></tr>
+      <tr><td>Merged into trunk</td><td>Branch URL keeps working but renders a "merged into <code>main</code> at <code>abc1234</code>" banner. Doc-level URLs alias forward to the post-merge location on trunk.</td></tr>
+      <tr><td>Deleted unmerged</td><td>Server keeps a snapshot of the last SHA. URL renders a "branch deleted" banner. The permalink <code>/p/proj/{sha}/...</code> still works.</td></tr>
+      <tr><td>Snapshot retention</td><td>Configurable per project. Default: indefinite on hosted; per-project TTL on self-hosted.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Consequences</h2>
+
+<div class="panel-warn">
+  <h3 style="color: var(--good);">Wins</h3>
+  <ul>
+    <li>Spike URLs are first-class — drop one in Slack, it still works after merge or deletion.</li>
+    <li>Matches the GitHub mental model (<code>/blob/&lt;branch&gt;/&lt;path&gt;</code>) — familiar to every dev.</li>
+    <li>PR-preview pattern emerges naturally; agent-docs can later integrate with GitHub / GitLab to post preview links on PRs.</li>
+    <li>Permalink form means a doc URL pinned at a commit SHA survives anything that doesn't garbage-collect the commit itself.</li>
+    <li>Branch deletion isn't catastrophic — the doc URL transitions to "archived" state rather than 404'ing.</li>
+  </ul>
+
+  <h3 style="color: var(--bad);">Costs</h3>
+  <ul style="margin-bottom: 0;">
+    <li>Server must track branch lifecycle events. Webhooks (GitHub / GitLab) are the obvious mechanism; polling is the fallback for self-hosted git remotes that don't push events. <span class="badge badge-info">Q12 open</span></li>
+    <li>Need a GC policy for snapshots eventually — indefinite retention isn't free on hosted instances. <span class="badge badge-info">Q13 open</span></li>
+    <li>URL scheme has edge cases when branch names look like path segments — handled by the <code>refs/heads/</code> sentinel.</li>
+    <li>Cross-branch references in docs default to "same branch as the referrer". Explicit cross-branch refs need an explicit <code>{ref}</code> in the link's <code>href</code>. (Authors writing branch-stable docs can keep using relative links naturally.)</li>
+    <li>Local mode (one tree, no <code>{ref}</code> segment) needs slightly different routing than shared mode — the binary has both code paths. <span class="badge badge-info">Q14 open</span></li>
+  </ul>
+</div>
+
+<h2>Status &amp; revision</h2>
+
+<p>Accepted 2026-05-28. Operational details (webhook setup, snapshot retention, local-mode flags) are deferred to MVP implementation and will produce follow-up ADRs as those decisions land.</p>
+
+<footer class="doc-foot">
+  <div>Native doc — no markdown source.</div>
+  <div><a href="index.html">↑ Decisions</a> · <a href="../index.html">agent-docs Docs</a></div>
+</footer>
+
+</div>
+</body>
+</html>

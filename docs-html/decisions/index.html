@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Decisions — agent-docs</title>
+<style>
+  :root { --bg: #0f1419; --panel: #1a2028; --panel-2: #232b36; --text: #e6e6e6; --muted: #9aa5b1; --accent-2: #60a5fa; --good: #10b981; --warn: #f59e0b; --border: #2d3744; --code-bg: #0a0e13; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 32px 96px; }
+  .breadcrumbs { font-size: 13px; color: var(--muted); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .breadcrumbs a { color: var(--accent-2); text-decoration: none; }
+  .breadcrumbs .sep { color: var(--border); margin: 0 8px; }
+  header.doc-head { padding: 24px 0 28px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -0.02em; }
+  h3 { margin: 0 0 6px; font-size: 16px; color: var(--accent-2); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .lead { color: #cfd6df; font-size: 16px; margin: 0; }
+  .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); margin-right: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin-left: 6px; }
+  .badge-good { background: rgba(16,185,129,0.15); color: var(--good); }
+  code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #f0d090; }
+  a { color: var(--accent-2); }
+  a.card-link { display: block; color: inherit; text-decoration: none; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+  a.card-link:hover .card { border-color: var(--accent-2); background: var(--panel-2); }
+  .card p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  footer.doc-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  footer.doc-foot a { color: var(--accent-2); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="breadcrumbs">
+  <a href="../index.html">agent-docs Docs</a>
+  <span class="sep">›</span>
+  <span>Decisions</span>
+</nav>
+
+<header class="doc-head">
+  <h1>Decisions (ADRs)</h1>
+  <div class="meta" style="margin-bottom: 14px;">
+    <span class="tag">section-index</span>
+    <span class="tag">3 accepted</span>
+  </div>
+  <p class="lead">Architecture decision records. Context / Decision / Consequences. Numbered sequentially as <code>NNN-{short-name}.html</code>.</p>
+</header>
+
+<a class="card-link" href="001-repo-canonical-source-of-truth.html">
+  <div class="card">
+    <h3>ADR-001 — Repo-canonical source of truth <span class="badge badge-good">Accepted</span></h3>
+    <p>Docs live in <code>docs-html/</code> in each project's git repo. Server holds bare clones; SQLite holds derived index only.</p>
+  </div>
+</a>
+
+<a class="card-link" href="002-html-canonical-no-source-language.html">
+  <div class="card">
+    <h3>ADR-002 — HTML-canonical, no source language <span class="badge badge-good">Accepted</span></h3>
+    <p>The committed file is HTML. No Markdown source, no render step. Metadata derived from semantic HTML on ingest.</p>
+  </div>
+</a>
+
+<a class="card-link" href="003-branch-aware-urls-with-preview-lifecycle.html">
+  <div class="card">
+    <h3>ADR-003 — Branch-aware URLs with preview lifecycle <span class="badge badge-good">Accepted</span></h3>
+    <p>Every URL is branch-scoped. Trunk aliases to clean form. Merged / deleted branches keep working with banners and forward-aliasing.</p>
+  </div>
+</a>
+
+<footer class="doc-foot">
+  <div>Native doc — no markdown source.</div>
+  <div><a href="../index.html">↑ agent-docs Docs</a></div>
+</footer>
+
+</div>
+</body>
+</html>
