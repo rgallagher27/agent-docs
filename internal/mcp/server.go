@@ -16,8 +16,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/rgallagher/agent-docs/internal/config"
-	"github.com/rgallagher/agent-docs/internal/gitstore"
+	"github.com/rgallagher27/agent-docs/internal/config"
+	"github.com/rgallagher27/agent-docs/internal/gitstore"
 )
 
 // protocolVersion is the MCP spec version advertised on initialize.

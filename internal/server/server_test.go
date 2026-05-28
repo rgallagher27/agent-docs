@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rgallagher/agent-docs/internal/config"
-	"github.com/rgallagher/agent-docs/internal/gitstore"
+	"github.com/rgallagher27/agent-docs/internal/config"
+	"github.com/rgallagher27/agent-docs/internal/gitstore"
 )
 
 // makeRemoteWithDocs creates a bare git remote and commits a small

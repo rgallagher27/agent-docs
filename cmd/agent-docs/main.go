@@ -14,10 +14,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rgallagher/agent-docs/internal/config"
-	"github.com/rgallagher/agent-docs/internal/gitstore"
-	"github.com/rgallagher/agent-docs/internal/mcp"
-	"github.com/rgallagher/agent-docs/internal/server"
+	"github.com/rgallagher27/agent-docs/internal/config"
+	"github.com/rgallagher27/agent-docs/internal/gitstore"
+	"github.com/rgallagher27/agent-docs/internal/mcp"
+	"github.com/rgallagher27/agent-docs/internal/server"
 )
 
 // version is the build-time version string. Set via -ldflags "-X main.version=…" at release time.

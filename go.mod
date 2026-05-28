@@ -1,4 +1,4 @@
-module github.com/rgallagher/agent-docs
+module github.com/rgallagher27/agent-docs
 
 go 1.26.2
 

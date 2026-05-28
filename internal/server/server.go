@@ -10,9 +10,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/rgallagher/agent-docs/internal/config"
-	"github.com/rgallagher/agent-docs/internal/gitstore"
-	"github.com/rgallagher/agent-docs/internal/render"
+	"github.com/rgallagher27/agent-docs/internal/config"
+	"github.com/rgallagher27/agent-docs/internal/gitstore"
+	"github.com/rgallagher27/agent-docs/internal/render"
 )
 
 // Server holds the open gitstore handles for each configured project

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rgallagher/agent-docs/internal/config"
-	"github.com/rgallagher/agent-docs/internal/gitstore"
+	"github.com/rgallagher27/agent-docs/internal/config"
+	"github.com/rgallagher27/agent-docs/internal/gitstore"
 )
 
 // setupServer builds an mcp.Server backed by a fresh bare remote with
